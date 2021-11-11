@@ -6,14 +6,33 @@ $SnipeApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIzIiwianRpIjoiOTl
 
 $VIServer = "marn-vb-vmsa01.iwunet.indwes.edu"
 
-Connect-SnipeUIT
-
 function Connect-SnipeUIT{
 #New-VICredentialStoreItem -Host marn-vb-vmsa01.iwunet.indwes.edu -User b.batman-stwk@indwes.edu -Password *
 Connect-SnipeitPS -url $SnipeURL -apiKey $SnipeApiKey
 Connect-VIServer -Server $VIServer
 
 
+}
+
+Connect-SnipeUIT
+
+
+enum outputTypes{
+	Accessory
+	Activity
+	Asset
+	Category
+	Company
+	Component
+	Consumable
+	Department
+	License
+    Location
+    Manufacturer
+    Model
+    Status
+    Supplier
+    User
 }
 
 function Add-SnipeVM{
@@ -274,6 +293,66 @@ Function Out-PieChart {
     }
 }
 
+Function Get-SnipeITData{
+param (
+		[Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][outputTypes]$Type
+	)
+    $command = "Get-Snipeit$Type -all"
+
+    $data = Invoke-Expression $command
+    return $data
+}
+
+Function Out-SnipeITReport{
+param (
+        [Parameter(Mandatory=$true)][ValidateScript({
+            if($_ | Test-Path ){
+                throw "File/Folder alreadys exists" 
+            }
+            if( -Not ( $_ | Split-Path | Test-Path) ){
+                throw "Folder path to new file does not exist." 
+            }
+            if($_ -notmatch "(\.csv)"){
+                throw "The file specified in the path argument must be a .csv"
+            }
+            return $true
+        })][System.IO.FileInfo]$Path,
+		[Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][outputTypes]$Type
+	)
+    Get-SnipeITData -Type $Type | Export-Csv -Path $Path
+
+}
+
+Function Out-SnipeITAllReports{
+
+param (
+        [Parameter(Mandatory=$true)][ValidateScript({
+            if(-Not($_ | Test-Path )){
+                throw "File/folder does not exist" 
+            }
+            if(-Not ($_ | Test-Path -PathType Container) ){
+                throw "The Path argument must be a folder."
+            }
+            return $true
+        })][System.IO.FileInfo]$Path
+	)
+
+$date = (get-date -format yyyy-MM-dd_HH-mm-ss)
+$folderName = "InventoryReport - $date"
+New-Item -Path $Path -ItemType "directory" -Name $folderName
+
+$Path = "$Path\$folderName" 
+foreach ($type in [outputTypes].GetEnumNames()){
+    $NewPath = "$Path\$type.csv"
+    $NewPath
+    Out-SnipeITReport -Path $NewPath -Type $type
+    }
+}
+
+
+
+
+
 #Export all functions that can be executed by a user
 Export-ModuleMember -Function 'Add-SnipeVM'
 Export-ModuleMember -Function 'Add-AllVMstoSnipe'
@@ -283,3 +362,7 @@ Export-ModuleMember -Function 'Update-AllSnipeVMs'
 
 Export-ModuleMember -Function 'Out-SnipeAssetsbyModel'
 Export-ModuleMember -Function 'Connect-SnipeUIT'
+
+Export-ModuleMember -Function 'Out-SnipeITAllReports'
+Export-ModuleMember -Function 'Out-SnipeITReport'
+Export-ModuleMember -Function 'Get-SnipeITData'
