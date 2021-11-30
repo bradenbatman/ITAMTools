@@ -2,7 +2,7 @@
 Import-module SnipeitPS
 
 $SnipeURL = "http:\\localhost"
-$SnipeApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIzIiwianRpIjoiOTlmMzhiNDI0NmI0YWEwNTBiZTlhODY1ZDc0ZGRhNjVmNGI3YTk0NmJiZWE1OTA4NTMzY2VjMjZkNDE2MTU4M2IwYjEyY2ZlODUwYzYyZWMiLCJpYXQiOjE2MzQxODYzMDIsIm5iZiI6MTYzNDE4NjMwMiwiZXhwIjoyMTA3NTcxOTAxLCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.PONNBVZ5qtK39fL58Osh4Qh6ZvdYPlJQnAZ1HUInyMDa0IF23u1XfdNMowGgg5eTgNP71ID6doH4ZHRPUq30EsQOp7xKSUPCNtMdZlPVVsm7dj8Vi6DYPAmyBIgHiXPHMc_0o3QGU_0B6LosFfpdXgDim3v7_ibqoo7__7JVNs8IyS4VupHjBGVFcbLSQfzwcFLFcIaj1AiqApj9bewmVA9L9m51ak-7cLxyep3fSBWZN4YJ-booXLKX4oxKyj8iP34zYpf4E1RjVHWRhC3jXhbFyxTLQzlnQfRg3Za9dUp4n8TVl9mxhwuXy3oEqX3UiBMLpoJKwgnPrPQLIAZ_GV6C1hjqkE0VGiNnw41ToBUx8fF0BOuaBdllVeZJCLD827DXsrHgE6Zumd1v95SuO8pjJ5OzUAzXrFqvVjbyTTxvEeqrORvOTDPDRKfkC-5HL4EdDE6NHdKeQOiVRWmiGYNZa5YVHAowz-wFVJGq20ENgVMp5dvWrvDMaqB8cvrdjhE9n_LKuGDe_IfPU3vI6lYAO0KGY3MXe8EOh1FLzilpT2SJWcD3CEurKoovDG7I3m7BG-PFzPsEyAc3IWCCvTS81Dt_t_kWNg7A4r1Cd467pRAca_oC2NYZ49A1hFtJyrfBgA6ZeZVzMLgyQMSdQyfvCROGmIV5XaeMbFXPOmA"
+$SnipeApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiYTIwMTVlMWMxYWNkNGU1Yjk1YjI2NTU4NTkzMTkxMGViMGNkYTM4MDQ5ZDBmYjlmODI1NzBmNzM2ODRmOWU0MDAyYzdhN2IxODkwMGI3YjAiLCJpYXQiOjE2MzcxNzcyMTUsIm5iZiI6MTYzNzE3NzIxNSwiZXhwIjoyMTEwNTYyODE1LCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.yDh_vqaO1DvcBK6uQQner7l687iYiEPbDBv-9GnbP9Kps2RcZbC-5v10vSRPqFAnEbww1KZ3R698LeHTekCxwTL7cyory93HQh6mMc_wJEMqO61SICQ4Wj581HdM-yJTpa8CPmNSXzHkeDFEMhVdxkIg2t_Ot7rgYuPaUJf1IUcKn6nehL3M6EKuqWYQVY65eRujyS1A-8AiKvJQR6GgvT5Rs0PZK5HCxnYPrkZLmEwb2jdG3K5DXvuC0zM2vInFhfze22uCHLTnknUmvm42FkrkTiswKTvcBfFd85GJeHwW0pnTiux5IXXqVEu4eZ2JvC8lC-5YLYyz9-iD9shR60DCDO9DSP5pjsxuzMcXfmhB8euFXPK49Mpm5Hnxlt5lsYP-LNl8a-vGUBDQwLb31gPx0SLk0nVc6TEK9rCmw4JFQybKull4rg3rK5p2dx3JRAWxta47MVpwwKl4Pj_tca0IbOTdvIc57JNoOKc1ZaZ5W3fnSekE_Uu-ilM5m9Gqt2BEvrgwubU0MUsQKp9fxJe1Fzlynoehq5eZHZRyWr3pKiHvoQgTOkVRjU-jiT1tgnZ6A0fVRvr5gEvK2XYKl82Cw2k1W26lt3b1WVVoWf6FmckuSBR3h2gem83rCTXiYwfUPwxsAelt2CqxekZIkGps4xZTsMl-8eWPey5WmZQ"
 
 $VIServer = "marn-vb-vmsa01.iwunet.indwes.edu"
 
@@ -10,7 +10,6 @@ function Connect-SnipeUIT{
 #New-VICredentialStoreItem -Host marn-vb-vmsa01.iwunet.indwes.edu -User b.batman-stwk@indwes.edu -Password *
 Connect-SnipeitPS -url $SnipeURL -apiKey $SnipeApiKey
 Connect-VIServer -Server $VIServer
-
 
 }
 
@@ -41,7 +40,7 @@ function Add-SnipeVM{
         [Parameter()] [VMware.VimAutomation.ViCore.Impl.V1.Inventory.InventoryItemImpl] $VM
     )
 
-    Connect-SnipeUIT
+    #Connect-SnipeUIT
 
     $onStatusID = (Get-SnipeitStatus -Search "Powered On").id
     $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
@@ -56,12 +55,11 @@ function Add-SnipeVM{
     $ipString =$ipString.TrimEnd(", ")
 
 
-
     $customFields = @{
-        "_snipeit_number_of_cpus_6" = $VM.NumCpu
-        "_snipeit_memory_gb_7" = $VM.MemoryGB
-        "_snipeit_ip_addresses_8" = $ipString
-        "_snipeit_os_10" = $VMGuest.OSFullName
+        "_snipeit_number_of_cpus_2" = $VM.NumCpu
+        "_snipeit_memory_gb_3" = $VM.MemoryGB
+        "_snipeit_ip_addresses_4" = $ipString
+        "_snipeit_os_5" = $VMGuest.OSFullName
     }
 
     $powerStatusID
@@ -73,6 +71,47 @@ function Add-SnipeVM{
     }
 
     New-SnipeitAsset -name $VM.Name -model_id $VMModelID -status_id $powerStatusID -customfields $customFields -asset_tag $VM.Id
+}
+
+function Add-SnipeComputer{
+
+    param(
+        [Parameter()][Microsoft.ActiveDirectory.Management.ADComputer] $Computer
+    )
+
+    #Connect-SnipeUIT
+
+    $Computer = $Computer | Get-ADComputer -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
+
+    $powerStatusID = (Get-SnipeitStatus -Search "Powered On").id
+    $ModelID = (Get-SnipeitModel -search "Computer").id
+
+    $customFields = @{
+        "_snipeit_os_5" = $Computer.OperatingSystem
+        "_snipeit_os_version_9" = $Computer.OperatingSystemVersion
+        "_snipeit_modified_10" = $Computer.Modified.ToString()
+        "_snipeit_created_11" = $Computer.Created.ToString()
+        "_snipeit_last_logon_date_12" = $Computer.LastLogonDate.ToString()
+    }
+
+    if($Computer.IPv4Address){
+        $customFields += @{"_snipeit_ipv4_address_6" = $Computer.IPv4Address}
+    }
+    if($Computer.IPv6Address){
+        $customFields += @{"_snipeit_ipv6_address_7" = $Computer.IPv6Address}
+    }    
+
+    New-SnipeitAsset -name $Computer.CN -model_id $ModelID -status_id $powerStatusID -customfields $customFields -asset_tag $Computer.SID
+}
+
+function Add-AllComputerstoSnipe{
+    #Connect-SnipeUIT
+
+    $Computers = Get-ADComputer -Filter *
+
+    Foreach ($Computer in $Computers){
+        Add-SnipeComputer -Computer $Computer
+    }
 }
 
 
@@ -87,8 +126,15 @@ function Add-AllVMstoSnipe{
 }
 
 function Remove-AllSnipeVMs{
-    Connect-SnipeUIT
-    Remove-SnipeitAsset -id (Get-SnipeitAsset -model_id $VMModelID).id
+    #Connect-SnipeUIT
+    $VMModelID = (Get-SnipeitModel -search "Virtual Machine").id
+    Remove-SnipeitAsset -id (Get-SnipeitAsset -all -model_id $VMModelID).id
+}
+
+function Remove-AllSnipeComputers{
+    #Connect-SnipeUIT
+    $ModelID = (Get-SnipeitModel -search "Computer").id
+    Remove-SnipeitAsset -id (Get-SnipeitAsset -all -model_id $ModelID).id
 }
 
 function Update-SnipeVM{
@@ -136,6 +182,63 @@ Add-SnipeVM $VM
 
 }
 }
+
+function Update-SnipeComputer{ 
+param(
+        [Parameter()] $assetTag
+    )
+
+    #Connect-SnipeUIT
+
+    try {
+        $Asset = Get-SnipeitAsset -asset_tag $assetTag
+        $Computer = Get-ADComputer -Filter 'SID -like $assetTag' -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
+        $LastModifiedSnipe = [DateTime]$Asset.custom_fields.Modified.value
+        
+        $LastModifiedAD = [DateTime]$Computer.Modified
+
+        if($LastModifiedSnipe -lt $LastModifiedAD){
+
+            $customFields = @{
+            "_snipeit_os_5" = $Computer.OperatingSystem
+            "_snipeit_os_version_9" = $Computer.OperatingSystemVersion
+            "_snipeit_modified_10" = $Computer.Modified.ToString()
+            "_snipeit_created_11" = $Computer.Created.ToString()
+            "_snipeit_last_logon_date_12" = $Computer.LastLogonDate.ToString()
+            }
+
+            if($Computer.IPv4Address){
+                $customFields += @{"_snipeit_ipv4_address_6" = $Computer.IPv4Address}
+            }
+            if($Computer.IPv6Address){
+                $customFields += @{"_snipeit_ipv6_address_7" = $Computer.IPv6Address}
+            }
+            Set-SnipeitAsset -id $Asset.id -customfields $customFields
+
+        }
+        
+    }
+    catch {
+        throw "Asset does not exist"
+    }
+
+
+}
+
+function Update-AllSnipeComputers{
+$Computers = Get-ADComputer -Filter *
+
+Foreach ($Computer in $Computers){
+        if(Get-SnipeitAsset -asset_tag $Computer.SID){
+            Update-SnipeComputer -assetTag $Computer.SID
+        }
+        else{
+            Add-SnipeComputer -Computer $Computer
+        }
+    }
+
+}
+
 
 #Prints a pie chart of the Assets in Snipe by Model
 Function Out-SnipeAssetsbyModel{
@@ -359,6 +462,12 @@ Export-ModuleMember -Function 'Add-AllVMstoSnipe'
 Export-ModuleMember -Function 'Remove-AllSnipeVMs'
 Export-ModuleMember -Function 'Update-SnipeVM'
 Export-ModuleMember -Function 'Update-AllSnipeVMs'
+
+Export-ModuleMember -Function 'Add-SnipeComputer'
+Export-ModuleMember -Function 'Add-AllComputerstoSnipe'
+Export-ModuleMember -Function 'Remove-AllSnipeComputers'
+Export-ModuleMember -Function 'Update-SnipeComputer'
+Export-ModuleMember -Function 'Update-AllSnipeComputers'
 
 Export-ModuleMember -Function 'Out-SnipeAssetsbyModel'
 Export-ModuleMember -Function 'Connect-SnipeUIT'

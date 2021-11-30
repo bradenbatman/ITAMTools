@@ -1,14 +1,12 @@
-﻿
-#Update-Module SnipeUIT
+﻿Import-module VMware.PowerCLI
 Import-Module SnipeUIT
-
 Import-Module Pester
 
 Describe 'Test: Remove-SnipeVM' {
     It 'Check that removing a VM is reflected on Snipe' {
         $VM= Get-VM -Name Snipe-IT_Demo
         Remove-SnipeitAsset -id (Get-SnipeitAsset -asset_tag $VM.Id).id
-
+        
         Get-SnipeitAsset -asset_tag $VM.Id | Should -Be $null
     }
 }
@@ -55,7 +53,7 @@ Describe 'Test: Add-SnipeVM Error' {
 }
 
 Describe 'Test: Out-SnipeAssetsbyModel Parameter issue' {
-    It 'Attempt to supply parameter outside of expeceted range' {
+    It 'Attempt to supply parameter outside of expected range' {
         $errorThrown = $false
         try {
             Out-SnipeAssetsbyModel -num 15
@@ -180,21 +178,6 @@ Describe 'Test: Out-SnipeITAllReports Fail 2' {
     }
 }
 
-#Happy path test for Out-SnipeITAllReports
-Describe 'Test: Out-SnipeITAllReports Pass' {
-    It 'Attempt to run command Out-SnipeITAllReports' {
-        $errorThrown = $false
-        try {
-            Out-SnipeITAllReports -Path "C:\Users\b.batman-stwk\Documents\testing"
-        }
-        catch {
-            $errorThrown = $true
-        }
-
-        $errorThrown | Should -Be $false
-    }
-}
-
 
 #Failure test for Type param validation
 Describe 'Test: Get-SnipeITData Fail' {
@@ -225,5 +208,77 @@ Describe 'Test: Get-SnipeITData pass' {
                
 
         $errorThrown | Should -Be $false
+    }
+}
+
+Describe 'Test: Remove-SnipeComputer' {
+    It 'Check that removing a Computer is reflected on Snipe' {
+        $asset = Get-SnipeitAsset -search DOXIE
+        Remove-SnipeitAsset -id $asset.id
+        
+        Get-SnipeitAsset -asset_tag $asset.asset_tag | Should -Be $null
+    }
+}
+
+Describe 'Test: Add-SnipeComputer' {
+    It 'Check that adding a Computer shows up on Snipe' {
+        $Computer = Get-ADComputer -Filter 'Name -like "DOXIE"'
+        Add-SnipeComputer -Computer $Computer
+
+        (Get-SnipeitAsset -asset_tag $Computer.Sid).asset_tag | Should -Be $Computer.Sid
+    }
+}
+
+Describe 'Test: All ADComputers exist in Snipe' {
+    It 'Check that all AD Computers have been added to Snipe' {
+
+        $allAssetsExist = $false
+        
+        if ((Get-SnipeitModel -search "Computer").assets_count -eq (get-adcomputer -Filter *).count) {
+            $allAssetsExist = $true
+        }
+               
+        $allAssetsExist | Should -Be $true
+    }
+}
+
+Describe 'Test: Update-SnipeComputer Error' {
+    It 'Attempt to update a Computer on Snipe that does not exist on AD' {
+        $errorThrown = $false
+        try {
+            $Computer = Get-ADComputer -Filter 'Name -like "12345"'
+            Update-SnipeComputer -assetTag $Computer.SIN
+        }
+        catch {
+            $errorThrown = $true
+        } 
+
+        $errorThrown | Should -Be $true
+    }
+}
+
+Describe 'Test: Update-SnipeComputer' {
+    It 'Verify that a Computer can be updated on Snipe' {
+        $Computer = Get-ADComputer -Filter 'Name -like "DOXIE"' -Properties Modified
+        Update-SnipeComputer -assetTag $Computer.SID
+
+        (Get-SnipeitAsset -asset_tag $Computer.Sid).custom_fields.Modified.value | Should -Be $Computer.Modified.toString()
+    }
+}
+
+
+
+Describe 'Test: Add-SnipeComputer Error' {
+    It 'Attempt to add a Computer that does not exist on Snipe' {
+        $errorThrown = $false
+        try {
+            $Computer = Get-ADComputer -Filter 'Name -like "12345"'
+            Add-SnipeComputer -Computer $Computer
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
     }
 }
