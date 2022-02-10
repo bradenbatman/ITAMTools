@@ -213,7 +213,7 @@ Describe 'Test: Get-SnipeITData pass' {
 
 Describe 'Test: Remove-SnipeComputer' {
     It 'Check that removing a Computer is reflected on Snipe' {
-        $asset = Get-SnipeitAsset -search DOXIE
+        $asset = Get-SnipeitAsset -search DEV-INV01
         Remove-SnipeitAsset -id $asset.id
         
         Get-SnipeitAsset -asset_tag $asset.asset_tag | Should -Be $null
@@ -222,10 +222,10 @@ Describe 'Test: Remove-SnipeComputer' {
 
 Describe 'Test: Add-SnipeComputer' {
     It 'Check that adding a Computer shows up on Snipe' {
-        $Computer = Get-ADComputer -Filter 'Name -like "DOXIE"'
+        $Computer = Get-ADComputer -Filter 'Name -like "DEV-INV01"'
         Add-SnipeComputer -Computer $Computer
 
-        (Get-SnipeitAsset -asset_tag $Computer.Sid).asset_tag | Should -Be $Computer.Sid
+        (Get-SnipeitAsset -asset_tag $Computer.Name).asset_tag | Should -Be $Computer.Name
     }
 }
 
@@ -234,7 +234,7 @@ Describe 'Test: All ADComputers exist in Snipe' {
 
         $allAssetsExist = $false
         
-        if ((Get-SnipeitModel -search "Computer").assets_count -eq (get-adcomputer -Filter *).count) {
+        if ((Get-SnipeitModel -search "Computer").assets_count -le (get-adcomputer -Filter *).count) {
             $allAssetsExist = $true
         }
                
@@ -257,22 +257,11 @@ Describe 'Test: Update-SnipeComputer Error' {
     }
 }
 
-Describe 'Test: Update-SnipeComputer' {
-    It 'Verify that a Computer can be updated on Snipe' {
-        $Computer = Get-ADComputer -Filter 'Name -like "DOXIE"' -Properties Modified
-        Update-SnipeComputer -assetTag $Computer.SID
-
-        (Get-SnipeitAsset -asset_tag $Computer.Sid).custom_fields.Modified.value | Should -Be $Computer.Modified.toString()
-    }
-}
-
-
-
 Describe 'Test: Add-SnipeComputer Error' {
     It 'Attempt to add a Computer that does not exist on Snipe' {
         $errorThrown = $false
         try {
-            $Computer = Get-ADComputer -Filter 'Name -like "12345"'
+            $Computer = Get-ADComputer -Filter 'Name -like "12346785"'
             Add-SnipeComputer -Computer $Computer
         }
         catch {
@@ -280,5 +269,131 @@ Describe 'Test: Add-SnipeComputer Error' {
         }
                
         $errorThrown | Should -Be $true
+    }
+}
+
+#New Tests
+
+Describe 'Test: Archive-SnipeVm Archive Happy Path' {
+    It 'Attempt to arhive a VM' {
+        $vm = Get-SnipeitAsset -asset_tag DEV-INV01
+        $status = $vm.status_label
+        $isArchived = $false
+        try {
+            Archive-SnipeAsset -assetTag $vm.asset_tag
+            $vmUpdated = Get-SnipeitAsset -asset_tag DEV-INV01
+
+            if($vmUpdated.status_label.name -eq "Archived"){
+                $isArchived = $true
+            }
+
+            Set-SnipeitAsset -id $vmUpdated.id -status_id $status.id -archived $false
+        }
+        catch {
+            $isArchived = $false
+        }
+               
+        $isArchived | Should -Be $true
+    }
+}
+
+Describe 'Test: Update-SnipeVM Archive Error Path' {
+    It 'Attempt to arhive a VM that does not exist' {
+        try {
+            $vm = Get-SnipeitAsset -asset_tag '1243345234'
+            $status = $vm.status_label
+            $isArchived = $false
+            Archive-SnipeAsset -assetTag $vm.asset_tag
+            $vmUpdated = Get-SnipeitAsset -asset_tag '1243345234'
+
+            if($vmUpdated.status_label.name -eq "Archived"){
+                $isArchived = $true
+            }
+
+            Set-SnipeitAsset -id $vmUpdated.id -status_id $status.id -archived $false
+        }
+        catch {
+            $isArchived = $false
+        }
+               
+        $isArchived | Should -Be $false
+    }
+}
+
+Describe 'Test: Archive-SnipeComputer Archive Happy Path' {
+    It 'Attempt to archive a Computer' {
+        $Computer = Get-SnipeitAsset -asset_tag IWU71184
+        $status = $Computer.status_label
+        $isArchived = $false
+        try {
+            Archive-SnipeAsset -assetTag $Computer.asset_tag
+            $ComputerUpdated = Get-SnipeitAsset -asset_tag IWU71184
+
+            if($ComputerUpdated.status_label.name -eq "Archived"){
+                $isArchived = $true
+            }
+
+            Set-SnipeitAsset -id $ComputerUpdated.id -status_id $status.id -archived $false
+        }
+        catch {
+            $isArchived = $false
+        }
+               
+        $isArchived | Should -Be $true
+    }
+}
+
+Describe 'Test: Update-SnipeComputer Happy Path' {
+    It 'Attempt to update a Computer' {
+        $updateFailed = $false
+        
+        try {
+            $Computer = Get-SnipeitAsset -asset_tag IWU71184
+            Update-SnipeComputer -assetTag $Computer.asset_tag
+        }
+        catch {
+            $updateFailed = $true
+        }
+               
+        $updateFailed | Should -Be $false
+    }
+}
+
+Describe 'Test: Update-SnipeComputer Archive Error Path' {
+    It 'Attempt to arhive a Computer that does not exist' {
+        try {
+            $Computer = Get-SnipeitAsset -asset_tag 'NONREALASSET'
+            $status = $Computer.status_label
+            $isArchived = $false
+            Archive-SnipeAsset -assetTag $Computer.asset_tag
+            $ComputerUpdated = Get-SnipeitAsset -asset_tag 'NONREALASSET'
+
+            if($ComputerUpdated.status_label.name -eq "Archived"){
+                $isArchived = $true
+            }
+
+            Set-SnipeitAsset -id $vmUpdated.id -status_id $status.id -archived $false
+        }
+        catch {
+            $isArchived = $false
+        }
+               
+        $isArchived | Should -Be $false
+    }
+}
+
+Describe 'Test: Update-SnipeComputer Happy Path' {
+    It 'Attempt to update a Computer' {
+        $updateFailed = $false
+        
+        try {
+            $Computer = Get-SnipeitAsset -asset_tag NONREALASSET
+            Update-SnipeComputer -assetTag $Computer.asset_tag
+        }
+        catch {
+            $updateFailed = $true
+        }
+               
+        $updateFailed | Should -Be $true
     }
 }
