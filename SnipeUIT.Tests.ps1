@@ -348,7 +348,7 @@ Describe 'Test: Update-SnipeComputer Happy Path' {
         $updateFailed = $false
         
         try {
-            $Computer = Get-SnipeitAsset -asset_tag DEV-INV01
+            $Computer = Get-SnipeitAsset -asset_tag IWU71184
             Update-SnipeComputer -assetTag $Computer.asset_tag
         }
         catch {
@@ -387,7 +387,7 @@ Describe 'Test: Update-SnipeComputer Happy Path' {
         $updateFailed = $false
         
         try {
-            $Computer = Get-SnipeitAsset -asset_tag "NONREALASSET"
+            $Computer = Get-SnipeitAsset -asset_tag NONREALASSET
             Update-SnipeComputer -assetTag $Computer.asset_tag
         }
         catch {
@@ -395,135 +395,5 @@ Describe 'Test: Update-SnipeComputer Happy Path' {
         }
                
         $updateFailed | Should -Be $true
-    }
-}
-
-Describe 'Test: Get-IWUITAsset Happy Path' {
-    It 'get-asset with all parameters' {
-        $exceptionThrown = $false
-        
-        try {
-            $Asset = Get-IWUITAsset DEV-INV01
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-               
-        $exceptionThrown | Should -Be $false
-    }
-}
-
-Describe 'Test: Get-IWUITAsset Happy Path 2' {
-    It 'get-asset with limited parameters' {
-        $exceptionThrown = $false
-        
-        try {
-            $Asset = Get-IWUITAsset DEV-INV01 -Properties "id"
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-               
-        $exceptionThrown | Should -Be $false
-    }
-}
-
-Describe 'Test: Get-IWUITAsset Fail Path' {
-    It 'get-asset with nonreal asset' {
-        $exceptionThrown = $false
-        
-        try {
-            $Asset = Get-IWUITAsset "NONREALASSET"
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-               
-        $exceptionThrown | Should -Be $true
-    }
-}
-
-Describe 'Test: Get-IWUITAsset Fail Path 2' {
-    It 'get-asset with nonreal parameters' {
-        $exceptionThrown = $false
-        
-        try {
-            $Asset = Get-IWUITAsset DEV-INV01 -Properties "id, nonrealprop"
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-               
-        $exceptionThrown | Should -Be $true
-    }
-}
-
-Describe 'Test: Out-ITAMPowerBIReport Happy Path' {
-    It 'Out-ITAMPowerBIReport, verifying that a report is successfully created.' {
-        $DataSetExists = $false
-        
-        $name = 'testReport'
-        Out-ITAMPowerBIReport -name $name -search 'IWU'
-
-
-        try {
-            $DataSet = Get-PowerBIDataset -name $name 
-            if($DataSet){
-                $DataSetExists = $true
-            }
-        }
-        catch {
-            $DataSetExists = $false
-        }
-
-        $DataSetExists | Should -Be $true
-    }
-}
-
-Describe 'Test: Out-ITAMPowerBIReport Happy Path: Exception not thrown' {
-    It 'Out-ITAMPowerBIReport, verifying that exception is not thrown' {
-        $exceptionThrown = $false
-        
-        $name = 'testReport'
-
-        try {
-            Out-ITAMPowerBIReport -name $name -search 'IWU'
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-
-        $exceptionThrown | Should -Be $false
-    }
-}
-
-Describe 'Test: Out-ITAMPowerBIReport Fail Path' {
-    It 'Out-ITAMPowerBIReport with missing parameters' {
-        $exceptionThrown = $false
-        
-        try {
-            Out-ITAMPowerBIReport -name $null -search $null
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-               
-        $exceptionThrown | Should -Be $true
-    }
-}
-
-Describe 'Test: Out-ITAMPowerBIReport Fail Path 2' {
-    It 'Out-ITAMPowerBIReport with non real asset' {
-        $exceptionThrown = $false
-        
-        $name = 'testReport'
-        try {
-            Out-ITAMPowerBIReport -name $name -search '12345821749587'
-        }
-        catch {
-            $exceptionThrown = $true
-        }
-               
-        $exceptionThrown | Should -Be $true
     }
 }
