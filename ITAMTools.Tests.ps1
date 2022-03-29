@@ -3,7 +3,7 @@ Import-Module SnipeUIT
 Import-Module Pester
 
 Describe 'Test: Remove-SnipeVM' {
-    It 'Check that removing a VM is reflected on Snipe' {
+    It 'Check that removing a VM is reflected on ITAM' {
         $VM= Get-VM -Name Snipe-IT_Demo
         Remove-SnipeitAsset -id (Get-SnipeitAsset -asset_tag $VM.Id).id
         
@@ -11,21 +11,21 @@ Describe 'Test: Remove-SnipeVM' {
     }
 }
 
-Describe 'Test: Add-SnipeVM' {
-    It 'Check that adding a VM shows up on Snipe' {
+Describe 'Test: Add-ITAMVM' {
+    It 'Check that adding a VM shows up on ITAM' {
         $VM= Get-VM -Name Snipe-IT_Demo
-        Add-SnipeVM -VM $VM
+        Add-ITAMVM -VM $VM
 
         (Get-SnipeitAsset -asset_tag $VM.Id).asset_tag | Should -Be $VM.Id
     }
 }
 
-Describe 'Test: Update-SnipeVM Error' {
-    It 'Attempt to update a VM on Snipe that does not exist in VMware' {
+Describe 'Test: Update-ITAMVM Error' {
+    It 'Attempt to update a VM on ITAM that does not exist in VMware' {
         $errorThrown = $false
         try {
             $VM = Get-VM -Name Snipe-IT_Demo
-            Update-SnipeVM -VM 1234 -$assetTag $VM.Id 
+            Update-ITAMVM -VM 1234 -$assetTag $VM.Id 
         }
         catch {
             $errorThrown = $true
@@ -36,12 +36,12 @@ Describe 'Test: Update-SnipeVM Error' {
     }
 }
 
-Describe 'Test: Add-SnipeVM Error' {
-    It 'Attempt to add a VM that does not exist on Snipe' {
+Describe 'Test: Add-ITAMVM Error' {
+    It 'Attempt to add a VM that does not exist on ITAM' {
         $errorThrown = $false
         try {
             $VM = Get-VM -Name Snipe-IT_Demos
-            Add-SnipeVM -VM $VM
+            Add-ITAMVM -VM $VM
         }
         catch {
             $errorThrown = $true
@@ -52,11 +52,11 @@ Describe 'Test: Add-SnipeVM Error' {
     }
 }
 
-Describe 'Test: Out-SnipeAssetsbyModel Parameter issue' {
+Describe 'Test: Out-ITAMAssetsbyModel Parameter issue' {
     It 'Attempt to supply parameter outside of expected range' {
         $errorThrown = $false
         try {
-            Out-SnipeAssetsbyModel -num 15
+            Out-ITAMAssetsbyModel -num 15
         }
         catch {
             $errorThrown = $true
@@ -67,11 +67,11 @@ Describe 'Test: Out-SnipeAssetsbyModel Parameter issue' {
     }
 }
 
-Describe 'Test: Out-SnipeAssetsbyModel' {
-    It 'Attempt to run command Out-SnipeAssetsbyModel' {
+Describe 'Test: Out-ITAMAssetsbyModel' {
+    It 'Attempt to run command Out-ITAMAssetsbyModel' {
         $errorThrown = $false
         try {
-            Out-SnipeAssetsbyModel -num 3
+            Out-ITAMAssetsbyModel -num 3
         }
         catch {
             $errorThrown = $true
@@ -83,11 +83,11 @@ Describe 'Test: Out-SnipeAssetsbyModel' {
 }
 
 #Failure test for Path validation
-Describe 'Test: Out-SnipeITReport Fail 1' {
-    It 'Attempt to run command Out-SnipeITReport with path: existing file' {
+Describe 'Test: Out-ITAMReport Fail 1' {
+    It 'Attempt to run command Out-ITAMReport with path: existing file' {
         $errorThrown = $false
         try {
-            Out-SnipeITReport -Type Accessory -Path C:\Users\b.batman-stwk\Documents\testing\test.csv
+            Out-ITAMReport -Type Accessory -Path C:\Users\b.batman-stwk\Documents\testing\test.csv
         }
         catch {
             $errorThrown = $true
@@ -99,11 +99,11 @@ Describe 'Test: Out-SnipeITReport Fail 1' {
 }
 
 #Failure test for Path validation
-Describe 'Test: Out-SnipeITReport Fail 2' {
-    It 'Attempt to run command Out-SnipeITReport with path: path does not exist' {
+Describe 'Test: Out-ITAMReport Fail 2' {
+    It 'Attempt to run command Out-ITAMReport with path: path does not exist' {
         $errorThrown = $false
         try {
-            Out-SnipeITReport -Type Accessory -Path C:\Users\b.ba\out.csv
+            Out-ITAMReport -Type Accessory -Path C:\Users\b.ba\out.csv
         }
         catch {
             $errorThrown = $true
@@ -115,11 +115,11 @@ Describe 'Test: Out-SnipeITReport Fail 2' {
 }
 
 #Failure test for Path validation
-Describe 'Test: Out-SnipeITReport Fail 3' {
-    It 'Attempt to run command Out-SnipeITReport with path: new file is not .csv' {
+Describe 'Test: Out-ITAMReport Fail 3' {
+    It 'Attempt to run command Out-ITAMReport with path: new file is not .csv' {
         $errorThrown = $false
         try {
-            Out-SnipeITReport -Type Accessory -Path C:\Users\b.batman-stwk\Documents\testing\out
+            Out-ITAMReport -Type Accessory -Path C:\Users\b.batman-stwk\Documents\testing\out
         }
         catch {
             $errorThrown = $true
@@ -130,13 +130,13 @@ Describe 'Test: Out-SnipeITReport Fail 3' {
     }
 }
 
-#Happy path test for Out-SnipeITReport
-Describe 'Test: Out-SnipeITReport Pass' {
-    It 'Attempt to run command Out-SnipeITReport' {
+#Happy path test for Out-ITAMReport
+Describe 'Test: Out-ITAMReport Pass' {
+    It 'Attempt to run command Out-ITAMReport' {
         $errorThrown = $false
         try {
             $date = (get-date -format yyyy-MM-dd_HH-mm-ss)
-            Out-SnipeITReport -Type Accessory -Path "C:\Users\b.batman-stwk\Documents\testing\out$date.csv"
+            Out-ITAMReport -Type Accessory -Path "C:\Users\b.batman-stwk\Documents\testing\out$date.csv"
         }
         catch {
             $errorThrown = $true
@@ -147,11 +147,11 @@ Describe 'Test: Out-SnipeITReport Pass' {
 }
 
 #Failure test for Path validation
-Describe 'Test: Out-SnipeITAllReports Fail 1' {
-    It 'Attempt to run command Out-SnipeITAllReports with path: path does not exist' {
+Describe 'Test: Out-AllITAMReports Fail 1' {
+    It 'Attempt to run command Out-AllITAMReports with path: path does not exist' {
         $errorThrown = $false
         try {
-            Out-SnipeITAllReports -Path C:\Users\b.ba\out
+            Out-AllITAMReports -Path C:\Users\b.ba\out
         }
         catch {
             $errorThrown = $true
@@ -163,11 +163,11 @@ Describe 'Test: Out-SnipeITAllReports Fail 1' {
 }
 
 #Failure test for Path validation
-Describe 'Test: Out-SnipeITAllReports Fail 2' {
-    It 'Attempt to run command Out-SnipeITAllReports with path: The Path argument must be a folder' {
+Describe 'Test: Out-AllITAMReports Fail 2' {
+    It 'Attempt to run command Out-AllITAMReports with path: The Path argument must be a folder' {
         $errorThrown = $false
         try {
-            Out-SnipeITAllReports -Path C:\Users\b.batman-stwk\Documents\testing\test.csv
+            Out-AllITAMReports -Path C:\Users\b.batman-stwk\Documents\testing\test.csv
         }
         catch {
             $errorThrown = $true
@@ -180,11 +180,11 @@ Describe 'Test: Out-SnipeITAllReports Fail 2' {
 
 
 #Failure test for Type param validation
-Describe 'Test: Get-SnipeITData Fail' {
-    It 'Attempt to run command Get-SnipeITData with incorrect type' {
+Describe 'Test: Get-ITAMData Fail' {
+    It 'Attempt to run command Get-ITAMData with incorrect type' {
         $errorThrown = $false
         try {
-            Get-SnipeITData -Type null
+            Get-ITAMData -Type null
         }
         catch {
             $errorThrown = $true
@@ -196,11 +196,11 @@ Describe 'Test: Get-SnipeITData Fail' {
 }
 
 #Happy path test for Type param validation
-Describe 'Test: Get-SnipeITData pass' {
-    It 'Attempt to run command Get-SnipeITData' {
+Describe 'Test: Get-ITAMData pass' {
+    It 'Attempt to run command Get-ITAMData' {
         $errorThrown = $false
         try {
-            Get-SnipeITData -Type Accessory
+            Get-ITAMData -Type Accessory
         }
         catch {
             $errorThrown = $true
@@ -212,7 +212,7 @@ Describe 'Test: Get-SnipeITData pass' {
 }
 
 Describe 'Test: Remove-SnipeComputer' {
-    It 'Check that removing a Computer is reflected on Snipe' {
+    It 'Check that removing a Computer is reflected on ITAM' {
         $asset = Get-SnipeitAsset -search DEV-INV01
         Remove-SnipeitAsset -id $asset.id
         
@@ -220,17 +220,17 @@ Describe 'Test: Remove-SnipeComputer' {
     }
 }
 
-Describe 'Test: Add-SnipeComputer' {
-    It 'Check that adding a Computer shows up on Snipe' {
+Describe 'Test: Add-ITAMComputer' {
+    It 'Check that adding a Computer shows up on ITAM' {
         $Computer = Get-ADComputer -Filter 'Name -like "DEV-INV01"'
-        Add-SnipeComputer -Computer $Computer
+        Add-ITAMComputer -Computer $Computer
 
         (Get-SnipeitAsset -asset_tag $Computer.Name).asset_tag | Should -Be $Computer.Name
     }
 }
 
-Describe 'Test: All ADComputers exist in Snipe' {
-    It 'Check that all AD Computers have been added to Snipe' {
+Describe 'Test: All ADComputers exist in ITAM' {
+    It 'Check that all AD Computers have been added to ITAM' {
 
         $allAssetsExist = $false
         
@@ -242,12 +242,12 @@ Describe 'Test: All ADComputers exist in Snipe' {
     }
 }
 
-Describe 'Test: Update-SnipeComputer Error' {
-    It 'Attempt to update a Computer on Snipe that does not exist on AD' {
+Describe 'Test: Update-ITAMComputer Error' {
+    It 'Attempt to update a Computer on ITAM that does not exist on AD' {
         $errorThrown = $false
         try {
             $Computer = Get-ADComputer -Filter 'Name -like "12345"'
-            Update-SnipeComputer -assetTag $Computer.SIN
+            Update-ITAMComputer -assetTag $Computer.SIN
         }
         catch {
             $errorThrown = $true
@@ -257,12 +257,12 @@ Describe 'Test: Update-SnipeComputer Error' {
     }
 }
 
-Describe 'Test: Add-SnipeComputer Error' {
-    It 'Attempt to add a Computer that does not exist on Snipe' {
+Describe 'Test: Add-ITAMComputer Error' {
+    It 'Attempt to add a Computer that does not exist on ITAM' {
         $errorThrown = $false
         try {
             $Computer = Get-ADComputer -Filter 'Name -like "12346785"'
-            Add-SnipeComputer -Computer $Computer
+            Add-ITAMComputer -Computer $Computer
         }
         catch {
             $errorThrown = $true
@@ -280,7 +280,7 @@ Describe 'Test: Archive-SnipeVm Archive Happy Path' {
         $status = $vm.status_label
         $isArchived = $false
         try {
-            Archive-SnipeAsset -assetTag $vm.asset_tag
+            Archive-ITAMAsset -assetTag $vm.asset_tag
             $vmUpdated = Get-SnipeitAsset -asset_tag DEV-INV01
 
             if($vmUpdated.status_label.name -eq "Archived"){
@@ -297,13 +297,13 @@ Describe 'Test: Archive-SnipeVm Archive Happy Path' {
     }
 }
 
-Describe 'Test: Update-SnipeVM Archive Error Path' {
+Describe 'Test: Update-ITAMVM Archive Error Path' {
     It 'Attempt to arhive a VM that does not exist' {
         try {
             $vm = Get-SnipeitAsset -asset_tag '1243345234'
             $status = $vm.status_label
             $isArchived = $false
-            Archive-SnipeAsset -assetTag $vm.asset_tag
+            Archive-ITAMAsset -assetTag $vm.asset_tag
             $vmUpdated = Get-SnipeitAsset -asset_tag '1243345234'
 
             if($vmUpdated.status_label.name -eq "Archived"){
@@ -326,7 +326,7 @@ Describe 'Test: Archive-SnipeComputer Archive Happy Path' {
         $status = $Computer.status_label
         $isArchived = $false
         try {
-            Archive-SnipeAsset -assetTag $Computer.asset_tag
+            Archive-ITAMAsset -assetTag $Computer.asset_tag
             $ComputerUpdated = Get-SnipeitAsset -asset_tag IWU71184
 
             if($ComputerUpdated.status_label.name -eq "Archived"){
@@ -343,13 +343,13 @@ Describe 'Test: Archive-SnipeComputer Archive Happy Path' {
     }
 }
 
-Describe 'Test: Update-SnipeComputer Happy Path' {
+Describe 'Test: Update-ITAMComputer Happy Path' {
     It 'Attempt to update a Computer' {
         $updateFailed = $false
         
         try {
             $Computer = Get-SnipeitAsset -asset_tag DEV-INV01
-            Update-SnipeComputer -assetTag $Computer.asset_tag
+            Update-ITAMComputer -assetTag $Computer.asset_tag
         }
         catch {
             $updateFailed = $true
@@ -359,13 +359,13 @@ Describe 'Test: Update-SnipeComputer Happy Path' {
     }
 }
 
-Describe 'Test: Update-SnipeComputer Archive Error Path' {
+Describe 'Test: Update-ITAMComputer Archive Error Path' {
     It 'Attempt to arhive a Computer that does not exist' {
         try {
             $Computer = Get-SnipeitAsset -asset_tag 'NONREALASSET'
             $status = $Computer.status_label
             $isArchived = $false
-            Archive-SnipeAsset -assetTag $Computer.asset_tag
+            Archive-ITAMAsset -assetTag $Computer.asset_tag
             $ComputerUpdated = Get-SnipeitAsset -asset_tag 'NONREALASSET'
 
             if($ComputerUpdated.status_label.name -eq "Archived"){
@@ -382,13 +382,13 @@ Describe 'Test: Update-SnipeComputer Archive Error Path' {
     }
 }
 
-Describe 'Test: Update-SnipeComputer Happy Path' {
+Describe 'Test: Update-ITAMComputer Happy Path' {
     It 'Attempt to update a Computer' {
         $updateFailed = $false
         
         try {
             $Computer = Get-SnipeitAsset -asset_tag "NONREALASSET"
-            Update-SnipeComputer -assetTag $Computer.asset_tag
+            Update-ITAMComputer -assetTag $Computer.asset_tag
         }
         catch {
             $updateFailed = $true
@@ -398,12 +398,12 @@ Describe 'Test: Update-SnipeComputer Happy Path' {
     }
 }
 
-Describe 'Test: Get-IWUITAsset Happy Path' {
+Describe 'Test: Get-ITAMAsset Happy Path' {
     It 'get-asset with all parameters' {
         $exceptionThrown = $false
         
         try {
-            $Asset = Get-IWUITAsset DEV-INV01
+            $Asset = Get-ITAMAsset DEV-INV01
         }
         catch {
             $exceptionThrown = $true
@@ -413,12 +413,12 @@ Describe 'Test: Get-IWUITAsset Happy Path' {
     }
 }
 
-Describe 'Test: Get-IWUITAsset Happy Path 2' {
+Describe 'Test: Get-ITAMAsset Happy Path 2' {
     It 'get-asset with limited parameters' {
         $exceptionThrown = $false
         
         try {
-            $Asset = Get-IWUITAsset DEV-INV01 -Properties "id"
+            $Asset = Get-ITAMAsset DEV-INV01 -Properties "id"
         }
         catch {
             $exceptionThrown = $true
@@ -428,12 +428,12 @@ Describe 'Test: Get-IWUITAsset Happy Path 2' {
     }
 }
 
-Describe 'Test: Get-IWUITAsset Fail Path' {
+Describe 'Test: Get-ITAMAsset Fail Path' {
     It 'get-asset with nonreal asset' {
         $exceptionThrown = $false
         
         try {
-            $Asset = Get-IWUITAsset "NONREALASSET"
+            $Asset = Get-ITAMAsset "NONREALASSET"
         }
         catch {
             $exceptionThrown = $true
@@ -443,12 +443,12 @@ Describe 'Test: Get-IWUITAsset Fail Path' {
     }
 }
 
-Describe 'Test: Get-IWUITAsset Fail Path 2' {
+Describe 'Test: Get-ITAMAsset Fail Path 2' {
     It 'get-asset with nonreal parameters' {
         $exceptionThrown = $false
         
         try {
-            $Asset = Get-IWUITAsset DEV-INV01 -Properties "id, nonrealprop"
+            $Asset = Get-ITAMAsset DEV-INV01 -Properties "id, nonrealprop"
         }
         catch {
             $exceptionThrown = $true

@@ -1,7 +1,7 @@
 ﻿Import-module VMware.PowerCLI
 Import-Module SnipeUIT 
 
-Connect-SnipeUIT
+Connect-ITAM
 
 Update-AllSnipeVMs
 Update-AllSnipeComputers
