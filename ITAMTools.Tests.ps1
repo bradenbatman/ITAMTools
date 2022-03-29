@@ -228,19 +228,6 @@ Describe 'Test: Add-ITAMComputer' {
     }
 }
 
-Describe 'Test: All ADComputers exist in ITAM' {
-    It 'Check that all AD Computers have been added to ITAM' {
-
-        $allAssetsExist = $false
-        
-        if ((Get-SnipeitModel -search "Computer").assets_count -le (get-adcomputer -Filter *).count) {
-            $allAssetsExist = $true
-        }
-               
-        $allAssetsExist | Should -Be $true
-    }
-}
-
 Describe 'Test: Update-ITAMComputer Error' {
     It 'Attempt to update a Computer on ITAM that does not exist on AD' {
         $errorThrown = $false
