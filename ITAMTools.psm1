@@ -12,6 +12,7 @@ function Connect-ITAM {
   Connect-SnipeitPS -url $SnipeURL -apiKey $SnipeApiKey
   #Connect-VIServer -Server $VIServer
   #Connect-PowerBIServiceAccount
+
 }
 
 Connect-ITAM
@@ -73,6 +74,12 @@ function Add-ITAMVM {
   }
 
   New-SnipeitAsset -Name $VM.Name -model_id $VMModelID -status_id $powerStatusID -customfields $customFields -asset_tag $VM.id
+
+  $Asset = Get-SnipeitAsset -asset_tag $VM.id
+  $ParentComputer = Get-SnipeitAsset -asset_tag $Asset.name
+    if($ParentComputer -and !$Asset.assigned_to){
+      Set-SnipeitAssetOwner -id $Asset.id -assigned_id $ParentComputer.id -checkout_to_type asset
+    }
 }
 
 function Add-ITAMComputer {
@@ -151,12 +158,7 @@ function Update-ITAMVM {
     [Parameter()] $assetTag
   )
 
-  Connect-ITAM
-
-
-  try {
     $Asset = Get-SnipeitAsset -asset_tag $assetTag
-    $id = $Asset.id
 
     #if($VM.Name -ne $Asset.name){
     #Set-SnipeitAsset -id $assetID -name $VM.Name
@@ -166,7 +168,7 @@ function Update-ITAMVM {
     $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
     $VMModelID = (Get-SnipeitModel -Search "Virtual Machine").id
 
-    $VMGuest = $VM | Get-VMGuest
+    $VMGuest = Get-VMGuest -VM $VM
     $ipString = ""
     foreach ($IP in $VMGuest.IPAddress) {
       $ipString += $IP + ", "
@@ -192,11 +194,12 @@ function Update-ITAMVM {
 
     Set-SnipeitAsset -id $Asset.id -status_id $powerStatusID -customfields $customFields
 
-
-  }
-  catch {
-    "Asset does not exist on SnipeIT"
-  }
+    
+    $ParentComputer = Get-SnipeitAsset -asset_tag $Asset.name
+    if($ParentComputer -and !$Asset.assigned_to){
+      Set-SnipeitAssetOwner -id $Asset.id -assigned_id $ParentComputer.id -checkout_to_type asset
+    }
+  
 
   #Archives any VMs on Snipe that no longer exist in VMWare
   Archive-ITAMVMs
@@ -209,7 +212,8 @@ function Archive-ITAMAsset {
   $archivedStatus = 3
 
   #Archives an asset in Snipe based on the asset tag passed in.
-  Get-SnipeitAsset -asset_tag $assetTag | Set-SnipeitAsset -status_id $archivedStatus -archived $true
+  $Asset = Get-SnipeitAsset -asset_tag $assetTag
+  Set-SnipeitAsset -id $Asset.id -status_id $archivedStatus -archived $true
 
 }
 
@@ -381,7 +385,8 @@ function Update-AllITAMComputers {
 function Out-ITAMAssetsbyModel {
   param(
     #sets default value for num parameter if the parameter was not provided.
-    [Parameter()][ValidateRange(1, 10)] [int]$num = 4
+    [Parameter()][ValidateRange(1, 10)] [int]$num = 4,
+    [Parameter()][bool]$testPrint = $false
   )
 
   Connect-ITAM
@@ -390,7 +395,7 @@ function Out-ITAMAssetsbyModel {
   $assets = Get-SnipeitAsset -All
   $assetModels = $assets.Model | Group-Object -Property name | Sort-Object -Descending Count
   $printData = $assetModels | Select-Object -First $num Name, Count
-  $count
+  $count = $null
 
   foreach ($assetModel in $assetModels) {
     if (!(($printData.Name).Contains($assetModel.Name))) {
@@ -404,8 +409,11 @@ function Out-ITAMAssetsbyModel {
       Count = $count
     }
   }
+  
+  if(!$testPrint){ 
+      $printData | Out-PieChart -PieChartTitle "Assets by Model" -DisplayToScreen
+  }
 
-  $printData | Out-PieChart -PieChartTitle "Assets by Model" -DisplayToScreen
 }
 
 #Prints a report to PowerBI

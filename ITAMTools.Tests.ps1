@@ -1,5 +1,4 @@
 ﻿Import-module VMware.PowerCLI
-Import-Module SnipeUIT
 Import-Module Pester
 
 Describe 'Test: Remove-SnipeVM' {
@@ -56,7 +55,7 @@ Describe 'Test: Out-ITAMAssetsbyModel Parameter issue' {
     It 'Attempt to supply parameter outside of expected range' {
         $errorThrown = $false
         try {
-            Out-ITAMAssetsbyModel -num 15
+            Out-ITAMAssetsbyModel -num 15 -testPrint $true
         }
         catch {
             $errorThrown = $true
@@ -71,7 +70,7 @@ Describe 'Test: Out-ITAMAssetsbyModel' {
     It 'Attempt to run command Out-ITAMAssetsbyModel' {
         $errorThrown = $false
         try {
-            Out-ITAMAssetsbyModel -num 3
+            Out-ITAMAssetsbyModel -num 3 -testPrint $true
         }
         catch {
             $errorThrown = $true
@@ -272,8 +271,6 @@ Describe 'Test: Add-ITAMComputer Error' {
     }
 }
 
-#New Tests
-
 Describe 'Test: Archive-SnipeVm Archive Happy Path' {
     It 'Attempt to arhive a VM' {
         $vm = Get-SnipeitAsset -asset_tag DEV-INV01
@@ -322,12 +319,12 @@ Describe 'Test: Update-ITAMVM Archive Error Path' {
 
 Describe 'Test: Archive-SnipeComputer Archive Happy Path' {
     It 'Attempt to archive a Computer' {
-        $Computer = Get-SnipeitAsset -asset_tag IWU71184
+        $Computer = Get-SnipeitAsset -asset_tag DEV-INV01
         $status = $Computer.status_label
         $isArchived = $false
         try {
             Archive-ITAMAsset -assetTag $Computer.asset_tag
-            $ComputerUpdated = Get-SnipeitAsset -asset_tag IWU71184
+            $ComputerUpdated = Get-SnipeitAsset -asset_tag DEV-INV01
 
             if($ComputerUpdated.status_label.name -eq "Archived"){
                 $isArchived = $true
@@ -525,5 +522,87 @@ Describe 'Test: Out-ITAMPowerBIReport Fail Path 2' {
         }
                
         $exceptionThrown | Should -Be $true
+    }
+}
+
+Describe 'Test: Update-ITAMVM VM Assignment Happy Path' {
+    It 'Update-ITAMVM with test values' {
+        
+
+        $VM = Get-VM -Name 'PRD-WEB04'
+        $Computer = Get-SnipeitAsset -asset_tag PRD-WEB04
+        
+        Update-ITAMVM -VM $VM -assetTag $VM.id
+
+        $updatedVM = Get-SnipeitAsset -asset_tag $VM.id
+
+        if($Computer){
+            $correctAssignment = ($updatedVM.assigned_to.id -eq $Computer.id)
+        }
+        else{
+            $correctAssignment = $true
+        }
+              
+        $correctAssignment | Should -Be $true
+    }
+
+}
+
+
+Describe 'Test: Update-ITAMVM VM Assignment Happy Path 2' {
+    It 'Update-ITAMVM with test values' {
+        
+        $exceptionThrown = $false
+
+        $VM = Get-VM -Name 'PRD-WEB04'
+
+        try{
+            Update-ITAMVM -VM $VM -assetTag $VM.id
+        }
+        catch{
+           $exceptionThrown = $true;
+        }
+              
+        $exceptionThrown | Should -Be $false
+    }
+
+}
+
+Describe 'Test: Add-ITAMVM VM Assignment Fail Path' {
+    It 'Update-ITAMVM without existing parent computer' {
+        
+        $VMname = 'DEV-INF01'
+        $VM = Get-VM -Name $VMname
+        $Computer = Get-SnipeitAsset -asset_tag $VMname
+        
+        Update-ITAMVM -VM $VM -assetTag $VM.id
+
+        $updatedVM = Get-SnipeitAsset -asset_tag $VM.id
+
+        #If the computer does not exists and the vm is assigned, assignment is incorrect
+        if(!$updatedVM.assigned_to){
+            $correctAssignment = $false
+        }
+        else{
+            $correctAssignment = $true
+        }
+              
+        $correctAssignment | Should -Be $false
+    }
+}
+
+
+Describe 'Test: Add-ITAMVM VM Assignment Fail Path 2' {
+    It 'Update-ITAMVM where parent computer is null ' {
+        
+        $VMname = 'DEV-INF01'
+        $VM = Get-VM -Name $VMname
+        $Computer = Get-SnipeitAsset -asset_tag $VMname
+        
+        Update-ITAMVM -VM $VM -assetTag $VM.id
+
+        $updatedVM = Get-SnipeitAsset -asset_tag $VM.id
+
+        (!$updatedVM.assigned_to -and !$Computer) | Should -Be $true
     }
 }
