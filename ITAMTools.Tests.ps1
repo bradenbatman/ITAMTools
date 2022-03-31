@@ -1,4 +1,4 @@
-﻿Import-module VMware.PowerCLI
+﻿Import-Module ITAMTools
 Import-Module Pester
 
 Describe 'Test: Remove-SnipeVM' {

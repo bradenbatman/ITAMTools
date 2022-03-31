@@ -1,21 +1,25 @@
-﻿Import-Module VMware.PowerCLI
-Import-Module SnipeitPS
-Import-Module MicrosoftPowerBIMgmt
+﻿#Import-Module VMware.PowerCLI
+#Import-Module SnipeitPS
+#Import-Module MicrosoftPowerBIMgmt
 
-$SnipeURL = "http://itassets.iwunet.indwes.edu"
-$SnipeApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiYTIyNDM2ZjM1Y2M0NWJiZTE4YjI2NzU5OGZkZDM0NGU4YThiNjJkYzc2OTFmOWJiMGRiNmFmNDlhMWM1NDYyYzdkODllNmQwOGU4NTk4NmIiLCJpYXQiOjE2MzkwNjU4NjYsIm5iZiI6MTYzOTA2NTg2NiwiZXhwIjoyMTEyNDUxNDY2LCJzdWIiOiI2Iiwic2NvcGVzIjpbXX0.fbV87YVigpVrbeGtfXGFU17dkeRQ1s5ADyZuAdmMtWp5uX_pAWSDB3-Sbzc6IQMxz4uu-ssbNzInmAt-iDuinVjAoWMcJroEwCzQEzZuADNFfEOARsUAKIMOmL9FMNNZbBsg7xQwMSq_EAKnOFYLAYXBE-STN31oCSjh7d1mfs0r6GRINcc2djSDP6GLeSVaQEWFVivd_ki9pQ3_Gp-3_Shd7XooHDF6zZziNUGgoJvvxVtPK6OFsLRnP2PYsuw3xNHVwlMuxDgwmvqU_MOwzW0WWMXG4iI7-qZOGAOAaDWIhRr7hwQNR_hKqYpCN3K9JxwbkFAdV9eJKPP2ok5aF0AL84vz2wnp3y4CaSt0fidpL_K6uCOabu0_sboLQztNS94DH2vo1uEQ3Ej1hByUYA2qKV4GSrSPBRZWAs32mU9c-NYagDVxSXjiMeLv18CqcowAB25jVeLEtPCNxiqt2RXtRAZC7ydlmEKg8F4YXA2gCsDtN_vYVtXWU1nga_mhmy8nYhy_ONj5BCTkdkjWfope5KFtHvCIKFWtQiSGh00p_iYTsNUIU_5A17CtnE09Y_yAlsYdxDFpB71tec_Sa0poQnymt4M8-01GjIkowLSp_Sx8De2iGYFP4pfPrpHaPyZ1QPZ7SWfZ4VY-LuXQ6HUDFfyK8AabNeRPHcNJAIM"
+function Connect-ITAMServices {
+  $SnipeURL = "http://itassets.iwunet.indwes.edu"
+  $SnipeApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiYTIyNDM2ZjM1Y2M0NWJiZTE4YjI2NzU5OGZkZDM0NGU4YThiNjJkYzc2OTFmOWJiMGRiNmFmNDlhMWM1NDYyYzdkODllNmQwOGU4NTk4NmIiLCJpYXQiOjE2MzkwNjU4NjYsIm5iZiI6MTYzOTA2NTg2NiwiZXhwIjoyMTEyNDUxNDY2LCJzdWIiOiI2Iiwic2NvcGVzIjpbXX0.fbV87YVigpVrbeGtfXGFU17dkeRQ1s5ADyZuAdmMtWp5uX_pAWSDB3-Sbzc6IQMxz4uu-ssbNzInmAt-iDuinVjAoWMcJroEwCzQEzZuADNFfEOARsUAKIMOmL9FMNNZbBsg7xQwMSq_EAKnOFYLAYXBE-STN31oCSjh7d1mfs0r6GRINcc2djSDP6GLeSVaQEWFVivd_ki9pQ3_Gp-3_Shd7XooHDF6zZziNUGgoJvvxVtPK6OFsLRnP2PYsuw3xNHVwlMuxDgwmvqU_MOwzW0WWMXG4iI7-qZOGAOAaDWIhRr7hwQNR_hKqYpCN3K9JxwbkFAdV9eJKPP2ok5aF0AL84vz2wnp3y4CaSt0fidpL_K6uCOabu0_sboLQztNS94DH2vo1uEQ3Ej1hByUYA2qKV4GSrSPBRZWAs32mU9c-NYagDVxSXjiMeLv18CqcowAB25jVeLEtPCNxiqt2RXtRAZC7ydlmEKg8F4YXA2gCsDtN_vYVtXWU1nga_mhmy8nYhy_ONj5BCTkdkjWfope5KFtHvCIKFWtQiSGh00p_iYTsNUIU_5A17CtnE09Y_yAlsYdxDFpB71tec_Sa0poQnymt4M8-01GjIkowLSp_Sx8De2iGYFP4pfPrpHaPyZ1QPZ7SWfZ4VY-LuXQ6HUDFfyK8AabNeRPHcNJAIM"  
+  $VIServer = "marn-vb-vmsa01.iwunet.indwes.edu" 
+  
+  #Todo encrypt and store snipe credentials
+  $SecureSnipeApi = ConvertTo-SecureString $SnipeApiKey -AsPlainText -Force
+  $SnipeCred = New-Object System.Management.Automation.PSCredential ($SnipeURL,$SecureSnipeApi)
 
-$VIServer = "marn-vb-vmsa01.iwunet.indwes.edu"
+  #Todo prompt credential if not existing
+  #New-VICredentialStoreItem -Host $VIServer -User b.batman-stwk@indwes.edu -Password *
 
-function Connect-ITAM {
-  #New-VICredentialStoreItem -Host marn-vb-vmsa01.iwunet.indwes.edu -User b.batman-stwk@indwes.edu -Password *
-  Connect-SnipeitPS -url $SnipeURL -apiKey $SnipeApiKey
-  #Connect-VIServer -Server $VIServer
-  #Connect-PowerBIServiceAccount
-
+  Connect-VIServer -Server $VIServer
+  Connect-PowerBIServiceAccount
+  Connect-SnipeitPS -siteCred $SnipeCred
 }
 
-Connect-ITAM
+
 
 
 enum outputTypes{
@@ -41,9 +45,6 @@ function Add-ITAMVM {
   param(
     [Parameter()] [VMware.VimAutomation.ViCore.Impl.V1.Inventory.InventoryItemImpl]$VM
   )
-
-  #Connect-ITAM
-
 
   $onStatusID = (Get-SnipeitStatus -Search "Powered On").id
   $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
@@ -73,9 +74,13 @@ function Add-ITAMVM {
     $powerStatusID = $offStatusID
   }
 
+  #Creates the asset in ITAM with the updated data.
   New-SnipeitAsset -Name $VM.Name -model_id $VMModelID -status_id $powerStatusID -customfields $customFields -asset_tag $VM.id
 
+  #Gets an updated reference to the asset from ITAM
   $Asset = Get-SnipeitAsset -asset_tag $VM.id
+
+  #Gets a VM's parents and if it exists, assign the asset to the computer
   $ParentComputer = Get-SnipeitAsset -asset_tag $Asset.name
     if($ParentComputer -and !$Asset.assigned_to){
       Set-SnipeitAssetOwner -id $Asset.id -assigned_id $ParentComputer.id -checkout_to_type asset
@@ -87,9 +92,6 @@ function Add-ITAMComputer {
   param(
     [Parameter()] [Microsoft.ActiveDirectory.Management.ADComputer]$Computer
   )
-
-  #Connect-ITAM
-
 
   $Computer = $Computer | Get-ADComputer -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
 
@@ -116,9 +118,6 @@ function Add-ITAMComputer {
 }
 
 function Add-AllITAMComputers {
-  #Connect-ITAM
-
-
   $Computers = Get-ADComputer -Filter '*' | Where-Object { ($_.DistinguishedName -notlike "*OU=Archived,*") -and ($_.DistinguishedName -notlike "*OU=Unmanaged,*") }
 
   foreach ($Computer in $Computers) {
@@ -128,9 +127,6 @@ function Add-AllITAMComputers {
 
 
 function Add-AllITAMVMs {
-  Connect-ITAM
-
-
   $VMs = Get-VM
 
   foreach ($VM in $VMs) {
@@ -139,15 +135,11 @@ function Add-AllITAMVMs {
 }
 
 function Remove-AllITAMVMs {
-  #Connect-ITAM
-
   $VMModelID = (Get-SnipeitModel -Search "Virtual Machine").id
   Remove-SnipeitAsset -Id (Get-SnipeitAsset -All -model_id $VMModelID).id
 }
 
 function Remove-AllITAMComputers {
-  #Connect-ITAM
-
   $ModelID = (Get-SnipeitModel -Search "Computer").id
   Remove-SnipeitAsset -Id (Get-SnipeitAsset -All -model_id $ModelID).id
 }
@@ -194,7 +186,7 @@ function Update-ITAMVM {
 
     Set-SnipeitAsset -id $Asset.id -status_id $powerStatusID -customfields $customFields
 
-    
+    #Gets te VM's parents and if it exists, assign the asset to the computer
     $ParentComputer = Get-SnipeitAsset -asset_tag $Asset.name
     if($ParentComputer -and !$Asset.assigned_to){
       Set-SnipeitAssetOwner -id $Asset.id -assigned_id $ParentComputer.id -checkout_to_type asset
@@ -247,9 +239,6 @@ function Update-ITAMComputer {
   param(
     [Parameter()] $assetTag
   )
-
-  #Connect-ITAM
-
 
   try {
     #Gets the Computer asset in Snipe
@@ -388,9 +377,6 @@ function Out-ITAMAssetsbyModel {
     [Parameter()][ValidateRange(1, 10)] [int]$num = 4,
     [Parameter()][bool]$testPrint = $false
   )
-
-  Connect-ITAM
-
 
   $assets = Get-SnipeitAsset -All
   $assetModels = $assets.Model | Group-Object -Property name | Sort-Object -Descending Count
@@ -672,7 +658,7 @@ Export-ModuleMember -Function 'Update-ITAMComputer'
 Export-ModuleMember -Function 'Update-AllITAMComputers'
 
 Export-ModuleMember -Function 'Out-ITAMAssetsbyModel'
-Export-ModuleMember -Function 'Connect-ITAM'
+Export-ModuleMember -Function 'Connect-ITAMServices'
 
 Export-ModuleMember -Function 'Out-AllITAMReports'
 Export-ModuleMember -Function 'Out-ITAMReport'
