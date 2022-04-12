@@ -2,36 +2,10 @@
 #Import-Module SnipeitPS
 #Import-Module MicrosoftPowerBIMgmt
 
-function Connect-ITAMServices {
-
-  $ITAMStoredCred = Get-StoredCredential -Target "ITAM"
-  $VMStoredCred = 
-  $PowerBIStoredCred = Get-StoredCredential -Target "PowerBI"
-  
-
-  $SnipeURL = "http://itassets.iwunet.indwes.edu"
-  $SnipeApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiYTIyNDM2ZjM1Y2M0NWJiZTE4YjI2NzU5OGZkZDM0NGU4YThiNjJkYzc2OTFmOWJiMGRiNmFmNDlhMWM1NDYyYzdkODllNmQwOGU4NTk4NmIiLCJpYXQiOjE2MzkwNjU4NjYsIm5iZiI6MTYzOTA2NTg2NiwiZXhwIjoyMTEyNDUxNDY2LCJzdWIiOiI2Iiwic2NvcGVzIjpbXX0.fbV87YVigpVrbeGtfXGFU17dkeRQ1s5ADyZuAdmMtWp5uX_pAWSDB3-Sbzc6IQMxz4uu-ssbNzInmAt-iDuinVjAoWMcJroEwCzQEzZuADNFfEOARsUAKIMOmL9FMNNZbBsg7xQwMSq_EAKnOFYLAYXBE-STN31oCSjh7d1mfs0r6GRINcc2djSDP6GLeSVaQEWFVivd_ki9pQ3_Gp-3_Shd7XooHDF6zZziNUGgoJvvxVtPK6OFsLRnP2PYsuw3xNHVwlMuxDgwmvqU_MOwzW0WWMXG4iI7-qZOGAOAaDWIhRr7hwQNR_hKqYpCN3K9JxwbkFAdV9eJKPP2ok5aF0AL84vz2wnp3y4CaSt0fidpL_K6uCOabu0_sboLQztNS94DH2vo1uEQ3Ej1hByUYA2qKV4GSrSPBRZWAs32mU9c-NYagDVxSXjiMeLv18CqcowAB25jVeLEtPCNxiqt2RXtRAZC7ydlmEKg8F4YXA2gCsDtN_vYVtXWU1nga_mhmy8nYhy_ONj5BCTkdkjWfope5KFtHvCIKFWtQiSGh00p_iYTsNUIU_5A17CtnE09Y_yAlsYdxDFpB71tec_Sa0poQnymt4M8-01GjIkowLSp_Sx8De2iGYFP4pfPrpHaPyZ1QPZ7SWfZ4VY-LuXQ6HUDFfyK8AabNeRPHcNJAIM"  
-  $VIServer = "marn-vb-vmsa01.iwunet.indwes.edu" 
-  
-  #Todo encrypt and store snipe credentials
-  $SecureSnipeApi = ConvertTo-SecureString $SnipeApiKey -AsPlainText -Force
-  $SnipeCred = New-Object System.Management.Automation.PSCredential ($SnipeURL,$SecureSnipeApi)
-
-  #Todo prompt credential if not existing
-  #New-VICredentialStoreItem -Host $VIServer -User b.batman-stwk@indwes.edu -Password *
-
-  Connect-VIServer -Server $VIServer
-  Connect-PowerBIServiceAccount
-  Connect-SnipeitPS -siteCred $SnipeCred
-}
-
-
-
-
 enum outputTypes{
   Accessory
   Activity
-  Asset
+  asset
   Category
   Company
   Component
@@ -46,34 +20,125 @@ enum outputTypes{
   User
 }
 
+enum credTypes{
+  ITAM
+  VMWare
+  PowerBI
+}
+
+function Connect-ITAMServices {
+  param(
+    [Parameter()][ValidateScript({
+        if (-not ($_ | Test-Path)) {
+          throw "File/folder does not exist"
+        }
+        if (-not ($_ | Test-Path -PathType Container)) {
+          throw "The path argument must be a folder."
+        }
+        return $true
+      })] [System.IO.FileInfo]$path = (Get-Location).path
+  )
+
+  $itamUrl = "http://itassets.iwunet.indwes.edu"
+  $viServerUrl = "marn-vb-vmsa01.iwunet.indwes.edu" 
+
+  $validConnect = $false
+  while(!$validConnect){
+    try{
+      Connect-SnipeitPS -siteCred (Import-Clixml -Path ($path.FullName + "\ITAM.xml"))
+      $validConnect = $true
+    }
+    catch{
+      $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", $itamUrl, "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
+    }
+  }
+
+  $validConnect = $false
+  while(!$validConnect){
+    try{
+      Connect-VIServer -Server $viServerUrl -Credential (Import-Clixml -Path ($path.FullName + "\VMWare.xml"))
+      $validConnect = $true
+    }
+    catch{
+      Get-Credential -Message "Please provide your login for VMWare" | Export-Clixml -Path ($path.FullName + "\VMWare.xml")
+    }
+  }
+
+
+  #Without an admin account to create API key, automated PowerBI login is not possible:
+  #https://stackoverflow.com/questions/61662906/powershell-automated-connection-to-power-bi-service-without-hardcoding-passwor
+  #Connect-PowerBIServiceAccount
+  $validConnect = $false
+  while(!$validConnect){
+    try{
+      Get-PowerBIAccessToken
+      $validConnect = $true
+    }
+    catch{
+      Connect-PowerBIServiceAccount
+    }
+  }
+
+}
+
+function Reset-ITAMServiceCredential{
+  param(
+    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [credTypes]$type,
+    [Parameter()][ValidateScript({
+      if (-not ($_ | Test-Path)) {
+        throw "File/folder does not exist"
+      }
+      if (-not ($_ | Test-Path -PathType Container)) {
+        throw "The path argument must be a folder."
+      }
+      return $true
+    })] [System.IO.FileInfo]$path = (Get-Location)
+  )
+
+  if ($type -eq [credTypes]::ITAM) {
+    $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", $itamUrl, "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
+  }
+  elseif ($type -eq ([credTypes]::VMWare)) {
+    Get-Credential -Message "Please provide your login for vm Ware" | Export-Clixml -Path ($path.FullName + "\VMWare.xml")
+  }
+  elseif ($type -eq ([credTypes]::PowerBI)) {
+    Connect-PowerBIServiceAccount
+  }
+
+  Connect-ITAMServices
+}
+
+
+
 function Add-ITAMVM {
 
   param(
-    [Parameter()] [VMware.VimAutomation.ViCore.Impl.V1.Inventory.InventoryItemImpl]$VM
+    [Parameter()] [VMware.VimAutomation.ViCore.Impl.V1.Inventory.InventoryItemImpl]$vm
   )
 
   $onStatusID = (Get-SnipeitStatus -Search "Powered On").id
   $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
-  $VMModelID = (Get-SnipeitModel -Search "Virtual Machine").id
 
-  $VMGuest = $VM | Get-VMGuest
+  $vmModelID = (Get-SnipeitModel -Search "Virtual Machine").id
+
+  $vmGuest = $vm | Get-VMGuest
   $ipString = ""
-  foreach ($IP in $VMGuest.IPAddress) {
-    $ipString += $IP + ", "
+  foreach ($ip in $vmGuest.IPAddress) {
+    $ipString += $ip + ", "
   }
 
   $ipString = $ipString.TrimEnd(", ")
 
 
   $customFields = @{
-    "_snipeit_number_of_cpus_2" = $VM.NumCpu
-    "_snipeit_memory_gb_3"      = $VM.MemoryGB
+    "_snipeit_number_of_cpus_2" = $vm.NumCpu
+    "_snipeit_memory_gb_3"      = $vm.MemoryGB
     "_snipeit_ip_addresses_4"   = $ipString
-    "_snipeit_os_5"             = $VMGuest.OSFullName
+    "_snipeit_os_5"             = $vmGuest.OSFullName
   }
 
   $powerStatusID
-  if ($VM.PowerState -eq "PoweredOn") {
+  if ($vm.PowerState -eq "PoweredOn") {
     $powerStatusID = $onStatusID
   }
   else {
@@ -81,125 +146,125 @@ function Add-ITAMVM {
   }
 
   #Creates the asset in ITAM with the updated data.
-  New-SnipeitAsset -Name $VM.Name -model_id $VMModelID -status_id $powerStatusID -customfields $customFields -asset_tag $VM.id
+  New-SnipeitAsset -Name $vm.Name -model_id $vmModelID -status_id $powerStatusID -customfields $customFields -asset_tag $vm.id
 
   #Gets an updated reference to the asset from ITAM
-  $Asset = Get-SnipeitAsset -asset_tag $VM.id
+  $asset = Get-SnipeitAsset -asset_tag $vm.id
 
-  #Gets a VM's parents and if it exists, assign the asset to the computer
-  $ParentComputer = Get-SnipeitAsset -asset_tag $Asset.name
-    if($ParentComputer -and !$Asset.assigned_to){
-      Set-SnipeitAssetOwner -id $Asset.id -assigned_id $ParentComputer.id -checkout_to_type asset
+  #Gets a vm's parents and if it exists, assign the asset to the computer
+  $parentComputer = Get-SnipeitAsset -asset_tag $asset.name
+    if($parentComputer -and !$asset.assigned_to){
+      Set-SnipeitAssetOwner -id $asset.id -assigned_id $parentComputer.id -checkout_to_type asset
     }
 }
 
 function Add-ITAMComputer {
 
   param(
-    [Parameter()] [Microsoft.ActiveDirectory.Management.ADComputer]$Computer
+    [Parameter()] [Microsoft.ActiveDirectory.Management.ADComputer]$computer
   )
 
-  $Computer = $Computer | Get-ADComputer -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
+  $computer = $computer | Get-ADComputer -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
 
   $powerStatusID = (Get-SnipeitStatus -Search "Powered On").id
-  $ModelID = (Get-SnipeitModel -Search "Computer").id
+  $modelID = (Get-SnipeitModel -Search "Computer").id
 
   $customFields = @{
-    "_snipeit_os_5"               = $Computer.OperatingSystem
-    "_snipeit_os_version_9"       = $Computer.OperatingSystemVersion
-    "_snipeit_modified_10"        = $Computer.Modified.ToString()
-    "_snipeit_created_11"         = $Computer.Created.ToString()
-    "_snipeit_last_logon_date_12" = $Computer.LastLogonDate.ToString()
-    "_snipeit_sid_13"             = $Computer.SID.Value
+    "_snipeit_os_5"               = $computer.OperatingSystem
+    "_snipeit_os_version_9"       = $computer.OperatingSystemVersion
+    "_snipeit_modified_10"        = $computer.Modified.ToString()
+    "_snipeit_created_11"         = $computer.Created.ToString()
+    "_snipeit_last_logon_date_12" = $computer.LastLogonDate.ToString()
+    "_snipeit_sid_13"             = $computer.SID.Value
   }
 
-  if ($Computer.IPv4Address) {
-    $customFields += @{ "_snipeit_ipv4_address_6" = $Computer.IPv4Address }
+  if ($computer.IPv4Address) {
+    $customFields += @{ "_snipeit_ipv4_address_6" = $computer.IPv4Address }
   }
-  if ($Computer.IPv6Address) {
-    $customFields += @{ "_snipeit_ipv6_address_7" = $Computer.IPv6Address }
+  if ($computer.IPv6Address) {
+    $customFields += @{ "_snipeit_ipv6_address_7" = $computer.IPv6Address }
   }
 
-  New-SnipeitAsset -Name $Computer.CN -model_id $ModelID -status_id $powerStatusID -customfields $customFields -asset_tag $Computer.CN
+  New-SnipeitAsset -Name $computer.CN -model_id $modelID -status_id $powerStatusID -customfields $customFields -asset_tag $computer.CN
 }
 
 function Add-AllITAMComputers {
-  $Computers = Get-ADComputer -Filter '*' | Where-Object { ($_.DistinguishedName -notlike "*OU=Archived,*") -and ($_.DistinguishedName -notlike "*OU=Unmanaged,*") }
+  $computers = Get-ADComputer -Filter '*' | Where-Object { ($_.DistinguishedName -notlike "*OU=Archived,*") -and ($_.DistinguishedName -notlike "*OU=Unmanaged,*") }
 
-  foreach ($Computer in $Computers) {
-    Add-ITAMComputer -Computer $Computer
+  foreach ($computer in $computers) {
+    Add-ITAMComputer -Computer $computer
   }
 }
 
 
 function Add-AllITAMVMs {
-  $VMs = Get-VM
+  $vms = Get-VM
 
-  foreach ($VM in $VMs) {
-    Add-ITAMVM -VM $VM
+  foreach ($vm in $vms) {
+    Add-ITAMVM -VM $vm
   }
 }
 
 function Remove-AllITAMVMs {
-  $VMModelID = (Get-SnipeitModel -Search "Virtual Machine").id
-  Remove-SnipeitAsset -Id (Get-SnipeitAsset -All -model_id $VMModelID).id
+  $vmModelID = (Get-SnipeitModel -Search "Virtual Machine").id
+  Remove-SnipeitAsset -Id (Get-SnipeitAsset -All -model_id $vmModelID).id
 }
 
 function Remove-AllITAMComputers {
-  $ModelID = (Get-SnipeitModel -Search "Computer").id
-  Remove-SnipeitAsset -Id (Get-SnipeitAsset -All -model_id $ModelID).id
+  $modelID = (Get-SnipeitModel -Search "Computer").id
+  Remove-SnipeitAsset -Id (Get-SnipeitAsset -All -model_id $modelID).id
 }
 
 function Update-ITAMVM {
   param(
-    [Parameter()] [VMware.VimAutomation.ViCore.Impl.V1.Inventory.InventoryItemImpl]$VM,
+    [Parameter()] [VMware.VimAutomation.ViCore.Impl.V1.Inventory.InventoryItemImpl]$vm,
     [Parameter()] $assetTag
   )
 
-    $Asset = Get-SnipeitAsset -asset_tag $assetTag
+    $asset = Get-SnipeitAsset -asset_tag $assetTag
 
-    #if($VM.Name -ne $Asset.name){
-    #Set-SnipeitAsset -id $assetID -name $VM.Name
+    #if($vm.Name -ne $asset.name){
+    #Set-SnipeitAsset -id $assetID -name $vm.Name
     #}
 
     $onStatusID = (Get-SnipeitStatus -Search "Powered On").id
     $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
-    $VMModelID = (Get-SnipeitModel -Search "Virtual Machine").id
+    $vmModelID = (Get-SnipeitModel -Search "Virtual Machine").id
 
-    $VMGuest = Get-VMGuest -VM $VM
+    $vmGuest = Get-VMGuest -VM $vm
     $ipString = ""
-    foreach ($IP in $VMGuest.IPAddress) {
-      $ipString += $IP + ", "
+    foreach ($ip in $vmGuest.IPAddress) {
+      $ipString += $ip + ", "
     }
 
     $ipString = $ipString.TrimEnd(", ")
 
 
     $customFields = @{
-      "_snipeit_number_of_cpus_2" = $VM.NumCpu
-      "_snipeit_memory_gb_3"      = $VM.MemoryGB
+      "_snipeit_number_of_cpus_2" = $vm.NumCpu
+      "_snipeit_memory_gb_3"      = $vm.MemoryGB
       "_snipeit_ip_addresses_4"   = $ipString
-      "_snipeit_os_5"             = $VMGuest.OSFullName
+      "_snipeit_os_5"             = $vmGuest.OSFullName
     }
 
     $powerStatusID
-    if ($VM.PowerState -eq "PoweredOn") {
+    if ($vm.PowerState -eq "PoweredOn") {
       $powerStatusID = $onStatusID
     }
     else {
       $powerStatusID = $offStatusID
     }
 
-    Set-SnipeitAsset -id $Asset.id -status_id $powerStatusID -customfields $customFields
+    Set-SnipeitAsset -id $asset.id -status_id $powerStatusID -customfields $customFields
 
-    #Gets te VM's parents and if it exists, assign the asset to the computer
-    $ParentComputer = Get-SnipeitAsset -asset_tag $Asset.name
-    if($ParentComputer -and !$Asset.assigned_to){
-      Set-SnipeitAssetOwner -id $Asset.id -assigned_id $ParentComputer.id -checkout_to_type asset
+    #Gets te vm's parents and if it exists, assign the asset to the computer
+    $parentComputer = Get-SnipeitAsset -asset_tag $asset.name
+    if($parentComputer -and !$asset.assigned_to){
+      Set-SnipeitAssetOwner -id $asset.id -assigned_id $parentComputer.id -checkout_to_type asset
     }
   
 
-  #Archives any VMs on Snipe that no longer exist in VMWare
+  #Archives any vms on Snipe that no longer exist in VMWare
   Archive-ITAMVMs
 }
 
@@ -210,33 +275,33 @@ function Archive-ITAMAsset {
   $archivedStatus = 3
 
   #Archives an asset in Snipe based on the asset tag passed in.
-  $Asset = Get-SnipeitAsset -asset_tag $assetTag
-  Set-SnipeitAsset -id $Asset.id -status_id $archivedStatus -archived $true
+  $asset = Get-SnipeitAsset -asset_tag $assetTag
+  Set-SnipeitAsset -id $asset.id -status_id $archivedStatus -archived $true
 
 }
 
 function Archive-ITAMVMs {
-  $VMs = Get-VM
-  $SnipeVMs = Get-SnipeitAsset -model_id (Get-SnipeitModel -Search "Virtual Machine").id -All
+  $vms = Get-VM
+  $itamVMs = Get-SnipeitAsset -model_id (Get-SnipeitModel -Search "Virtual Machine").id -All
 
 
-  foreach ($SnipeVM in $SnipeVMs) {
-    if ($VMs.id -notcontains $SnipeVM.asset_tag) {
-      Archive-ITAMAsset -assetTag $SnipeVm.asset_tag
+  foreach ($itamVM in $itamVMs) {
+    if ($vms.id -notcontains $itamVM.asset_tag) {
+      Archive-ITAMAsset -assetTag $itamVM.asset_tag
     }
   }
 }
 
 function Archive-ITAMComputers {
   #gets the up to date computer data from Active Directory
-  $Computers = Get-ADComputer -Filter * -Properties CN
+  $computers = Get-ADComputer -Filter * -Properties CN
 
-  $SnipeComputers = Get-SnipeitAsset -model_id (Get-SnipeitModel -Search "Computer").id -All
+  $itamComputers = Get-SnipeitAsset -model_id (Get-SnipeitModel -Search "Computer").id -All
 
-  foreach ($Computer in $SnipeComputers) {
+  foreach ($computer in $itamComputers) {
     #If the computer does not exist in the Active Directory Dataset, archive it on Snipe
-    if ($Computers.CN -notcontains $Computer.asset_tag) {
-      Archive-ITAMAsset -assetTag $Computer.asset_tag
+    if ($computers.CN -notcontains $computer.asset_tag) {
+      Archive-ITAMAsset -assetTag $computer.asset_tag
     }
   }
 }
@@ -247,41 +312,41 @@ function Update-ITAMComputer {
   )
 
   try {
-    #Gets the Computer asset in Snipe
-    $Asset = Get-SnipeitAsset -asset_tag $assetTag
-    #Gets the corrosponding Computer data from Active Directory
-    $Computer = Get-ADComputer -Filter 'CN -like $assetTag' -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
-    $LastModifiedSnipe = [datetime]$Asset.custom_fields.Modified.Value
+    #Gets the computer asset in Snipe
+    $asset = Get-SnipeitAsset -asset_tag $assetTag
+    #Gets the corrosponding computer data from Active Directory
+    $computer = Get-ADComputer -Filter 'CN -like $assetTag' -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
+    $lastModifiedITAM = [datetime]$asset.custom_fields.Modified.Value
 
     $statusID = Get-SnipeitStatus -Id 2
 
-    $LastModifiedAD = [datetime]$Computer.Modified
+    $lastModifiedAD = [datetime]$computer.Modified
 
-    #If the Asset has been modified since the last update, update all of the data fields
-    if ($LastModifiedSnipe -lt $LastModifiedAD) {
+    #If the asset has been modified since the last update, update all of the data fields
+    if ($lastModifiedITAM -lt $lastModifiedAD) {
       $customFields = @{
-        "_snipeit_os_5"               = $Computer.OperatingSystem
-        "_snipeit_os_version_9"       = $Computer.OperatingSystemVersion
-        "_snipeit_modified_10"        = $Computer.Modified.ToString()
-        "_snipeit_created_11"         = $Computer.Created.ToString()
-        "_snipeit_last_logon_date_12" = $Computer.LastLogonDate.ToString()
+        "_snipeit_os_5"               = $computer.OperatingSystem
+        "_snipeit_os_version_9"       = $computer.OperatingSystemVersion
+        "_snipeit_modified_10"        = $computer.Modified.ToString()
+        "_snipeit_created_11"         = $computer.Created.ToString()
+        "_snipeit_last_logon_date_12" = $computer.LastLogonDate.ToString()
       }
 
-      if ($Computer.IPv4Address) {
-        $customFields += @{ "_snipeit_ipv4_address_6" = $Computer.IPv4Address }
+      if ($computer.IPv4Address) {
+        $customFields += @{ "_snipeit_ipv4_address_6" = $computer.IPv4Address }
       }
-      if ($Computer.IPv6Address) {
-        $customFields += @{ "_snipeit_ipv6_address_7" = $Computer.IPv6Address }
+      if ($computer.IPv6Address) {
+        $customFields += @{ "_snipeit_ipv6_address_7" = $computer.IPv6Address }
       }
 
       #Push the updates to Snipe
-      Set-SnipeitAsset -Id $Asset.id -customfields $customFields -status_id $statusID
+      Set-SnipeitAsset -Id $asset.id -customfields $customFields -status_id $statusID
 
     }
 
   }
   catch {
-    throw "Asset does not exist"
+    throw "asset does not exist"
   }
 
 
@@ -289,16 +354,16 @@ function Update-ITAMComputer {
 
 function Update-AllITAMVMs {
 
-  $VMs = Get-VM
+  $vms = Get-VM
 
-  foreach ($VM in $VMs) {
+  foreach ($vm in $vms) {
 
-    $Asset = Get-SnipeitAsset -asset_tag $VM.id
-    if ($Asset) {
-      Update-ITAMVM -VM $VM -assetTag $VM.id
+    $asset = Get-SnipeitAsset -asset_tag $vm.id
+    if ($asset) {
+      Update-ITAMVM -VM $vm -assetTag $vm.id
     }
     else {
-      Add-ITAMVM $VM
+      Add-ITAMVM $vm
     }
 
   }
@@ -307,69 +372,69 @@ function Update-AllITAMVMs {
 function Get-ITAMAsset {
   param(
     [Parameter(Mandatory = $true)] [string]$assetTag,
-    [string]$Properties,
+    [string]$properties,
     [switch]$excludeEmptyProperties
   )
 
-  $SnipeAsset = Get-SnipeitAsset -asset_tag $assetTag
+  $snipeAsset = Get-SnipeitAsset -asset_tag $assetTag
 
   #If the snipe asset is null (passed asset tag is not real), throw exception
-  if (!($SnipeAsset)) {
-    throw "Asset Does not exist in Snipe"
+  if (!($snipeAsset)) {
+    throw "asset Does not exist in Snipe"
   }
 
-  $IWUITAsset = [pscustomobject]@{}
+  $itamAsset = [pscustomobject]@{}
 
-  #If the parameter Properties is null or *, return object with all Properties
-  if ([string]::IsNullOrWhiteSpace($Properties) -or ($Properties -eq "*")) {
-    foreach ($Property in $SnipeAsset.PSObject.Properties) {
-      $IWUITAsset | Add-Member -MemberType NoteProperty -Name $Property.Name -Value $Property.Value
+  #If the parameter properties is null or *, return object with all properties
+  if ([string]::IsNullOrWhiteSpace($properties) -or ($properties -eq "*")) {
+    foreach ($property in $snipeAsset.PSObject.properties) {
+      $itamAsset | Add-Member -MemberType NoteProperty -Name $property.Name -Value $property.Value
     }
   }
   else {
-    foreach ($Property in ($Properties.Split(", "))) {
+    foreach ($property in ($properties.Split(", "))) {
       #If a property provided does not exist, an exception will be thrown
-      if ($Property) {
-        if (!($SnipeAsset.PSObject.Properties.Name -eq $Property)) {
-          throw "Property provided does not exist: $Property"
+      if ($property) {
+        if (!($snipeAsset.PSObject.properties.Name -eq $property)) {
+          throw "property provided does not exist: $property"
         }
 
-        $IWUITAsset | Add-Member -MemberType NoteProperty -Name $Property -Value $SnipeAsset.$Property
+        $itamAsset | Add-Member -MemberType NoteProperty -Name $property -Value $snipeAsset.$property
       }
     }
   }
 
   #Expand the custom fields property to include custom field value pairs in the object
-  if ($IWUITAsset.custom_fields) {
-    foreach ($Property in $IWUITAsset.custom_fields.PSObject.Properties) {
-      $IWUITAsset | Add-Member -MemberType NoteProperty -Name $Property.Name -Value $Property.Value.Value
+  if ($itamAsset.custom_fields) {
+    foreach ($property in $itamAsset.custom_fields.PSObject.properties) {
+      $itamAsset | Add-Member -MemberType NoteProperty -Name $property.Name -Value $property.Value.Value
     }
   }
 
   #If the user chooses to remove the properties that don't have value, iterate and remove empty valued pairs.
   if ($excludeEmptyProperties) {
-    foreach ($Property in $IWUITAsset.PSObject.Properties) {
-      if ([string]::IsNullOrWhiteSpace($Property.Value)) {
-        $IWUITAsset.PSObject.Properties.Remove($Property.Name)
+    foreach ($property in $itamAsset.PSObject.properties) {
+      if ([string]::IsNullOrWhiteSpace($property.Value)) {
+        $itamAsset.PSObject.properties.Remove($property.Name)
       }
     }
   }
 
-  return $IWUITAsset
+  return $itamAsset
 }
 
 function Update-AllITAMComputers {
-  $Computers = Get-ADComputer -Filter * -Properties CN
+  $computers = Get-ADComputer -Filter * -Properties CN
 
-  foreach ($Computer in $Computers) {
-    if (Get-SnipeitAsset -asset_tag $Computer.CN) {
+  foreach ($computer in $computers) {
+    if (Get-SnipeitAsset -asset_tag $computer.CN) {
       try {
-        Update-ITAMComputer -assetTag $Computer.CN
+        Update-ITAMComputer -assetTag $computer.CN
       }
       catch {}
     }
     else {
-      Add-ITAMComputer -Computer $Computer
+      Add-ITAMComputer -Computer $computer
     }
   }
 
@@ -417,10 +482,10 @@ function Out-ITAMPowerBIReport {
 
   )
 
-  $Workspace = Get-PowerBIWorkspace -Name 'IWU ITAM'
+  $workspace = Get-PowerBIWorkspace -Name 'IWU ITAM'
 
   # PowerBI Data Types: Int64, Double, Boolean, DateTime, String
-  $ColumnMap = @{
+  $columnMap = @{
     'name'       = 'String'
     'asset_tag'  = 'String'
     'model'      = 'String'
@@ -430,16 +495,16 @@ function Out-ITAMPowerBIReport {
     'updated_at' = 'DateTime'
   }
 
-  $Columns = @()
+  $columns = @()
      
   #Create an array of PowerBI Column Objects
-  $ColumnMap.GetEnumerator() | ForEach-Object {
-    $Columns += New-PowerBIColumn -Name $_.Key -DataType $_.Value
+  $columnMap.GetEnumerator() | ForEach-Object {
+    $columns += New-PowerBIColumn -Name $_.Key -DataType $_.Value
   }
 
-  $Table = New-PowerBITable -Name "DefaultTable" -Columns $Columns
-  $DataSet = New-PowerBIDataSet -Name $name -Tables $Table
-  $DataSetResult = Add-PowerBIDataSet -DataSet $DataSet -WorkspaceId $Workspace.Id
+  $table = New-PowerBITable -Name "DefaultTable" -Columns $columns
+  $dataSet = New-PowerBIDataSet -Name $name -Tables $table
+  $dataSetResult = Add-PowerBIDataSet -DataSet $dataSet -WorkspaceId $workspace.Id
 
   $assets = @()
       
@@ -463,7 +528,7 @@ function Out-ITAMPowerBIReport {
       'updated_at' = $asset.updated_at.datetime
     }
    
-    Add-PowerBIRow -DatasetId $DataSetResult.Id -TableName $Table.Name -Row $Row -WorkspaceId $Workspace.Id
+    Add-PowerBIRow -DatasetId $dataSetResult.Id -TableName $table.Name -Row $Row -WorkspaceId $workspace.Id
   }
 }
 
@@ -524,7 +589,7 @@ function Out-PieChart {
   }
   process {
     if (-not $valueProperty) {
-      $numericProperties = foreach ($property in $inputObject.PSObject.Properties) {
+      $numericProperties = foreach ($property in $inputObject.PSObject.properties) {
         if ([double]::TryParse($property.Value, [ref]$null)) {
           $property.Name
         }
@@ -537,10 +602,10 @@ function Out-PieChart {
       }
     }
     if (-not $LabelProperty) {
-      if ($inputObject.PSObject.Properties.Count -eq 2) {
-        $LabelProperty = $inputObject.Properties.Name -ne $valueProperty
+      if ($inputObject.PSObject.properties.Count -eq 2) {
+        $LabelProperty = $inputObject.properties.Name -ne $valueProperty
       }
-      elseif ($inputObject.PSObject.Properties.Item('Name')) {
+      elseif ($inputObject.PSObject.properties.Item('Name')) {
         $LabelProperty = 'Name'
       }
       else {
@@ -593,9 +658,9 @@ function Out-PieChart {
 
 function Get-ITAMData {
   param(
-    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [outputTypes]$Type
+    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [outputTypes]$type
   )
-  $command = "Get-Snipeit$Type -all"
+  $command = "Get-Snipeit$type -all"
 
   $data = Invoke-Expression $command
   return $data
@@ -614,10 +679,10 @@ function Out-ITAMReport {
           throw "The file specified in the path argument must be a .csv"
         }
         return $true
-      })] [System.IO.FileInfo]$Path,
-    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [outputTypes]$Type
+      })] [System.IO.FileInfo]$path,
+    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [outputTypes]$type
   )
-  Get-ITAMData -Type $Type | Export-Csv -Path $Path
+  Get-ITAMData -Type $type | Export-Csv -Path $path
 
 }
 
@@ -629,21 +694,21 @@ function Out-AllITAMReports {
           throw "File/folder does not exist"
         }
         if (-not ($_ | Test-Path -PathType Container)) {
-          throw "The Path argument must be a folder."
+          throw "The path argument must be a folder."
         }
         return $true
-      })] [System.IO.FileInfo]$Path
+      })] [System.IO.FileInfo]$path
   )
 
   $date = (Get-Date -Format yyyy-MM-dd_HH-mm-ss)
   $folderName = "InventoryReport - $date"
-  New-Item -Path $Path -ItemType "directory" -Name $folderName
+  New-Item -Path $path -ItemType "directory" -Name $folderName
 
-  $Path = "$Path\$folderName"
+  $path = "$path\$folderName"
   foreach ($type in [outputTypes].GetEnumNames()) {
-    $NewPath = "$Path\$type.csv"
-    $NewPath
-    Out-ITAMReport -Path $NewPath -Type $type
+    $newPath = "$path\$type.csv"
+    $newPath
+    Out-ITAMReport -Path $newPath -Type $type
   }
 }
 
@@ -665,6 +730,7 @@ Export-ModuleMember -Function 'Update-AllITAMComputers'
 
 Export-ModuleMember -Function 'Out-ITAMAssetsbyModel'
 Export-ModuleMember -Function 'Connect-ITAMServices'
+Export-ModuleMember -Function 'Reset-ITAMServiceCredential'
 
 Export-ModuleMember -Function 'Out-AllITAMReports'
 Export-ModuleMember -Function 'Out-ITAMReport'

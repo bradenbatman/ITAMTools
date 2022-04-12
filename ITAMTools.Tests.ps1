@@ -593,3 +593,82 @@ Describe 'Test: Add-ITAMVM VM Assignment Fail Path 2' {
         (!$updatedVM.assigned_to -and !$Computer) | Should -Be $true
     }
 }
+
+
+Describe 'Test: Connect-ITAMServices Happy Path: Exception not thrown' {
+    It 'Connect-ITAMServices, verifying that exception is not thrown' {
+        $exceptionThrown = $false
+
+        try {
+            Connect-ITAMServices
+        }
+        catch {
+            $exceptionThrown = $true
+        }
+
+        $exceptionThrown | Should -Be $false
+    }
+}
+
+Describe 'Test: Connect-ITAMServices Happy Path: Connections Exist' {
+    It 'Connect-ITAMServices, verifying that Connections Exist' {
+        Connect-ITAMServices
+
+        #Each of these functions will return true if the connections exists
+        ((get-vm) -and (Get-SnipeitModel) -and (Get-PowerBIAccessToken)) | Should -Be $true
+    }
+}
+
+Describe 'Test: Connect-ITAMServices Happy Path: path works correctly' {
+    It 'Connect-ITAMServices, verifying that Connections Exist at path location' {
+        Connect-ITAMServices -Path C:\Users\b.batman-stwk\Documents\ITAMTools\testing
+
+        #Each of these functions will return true if the connections exists
+        ((get-vm) -and (Get-SnipeitModel) -and (Get-PowerBIAccessToken)) | Should -Be $true
+    }
+}
+
+#Failure test for Type param validation
+Describe 'Test: Reset-ITAMServiceCredential Type Param Fail' {
+    It 'Attempt to run command Reset-ITAMServiceCredential with incorrect type' {
+        $errorThrown = $false
+        try {
+            Reset-ITAMServiceCredential -Type null
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
+    }
+}
+
+#Failure test for Type param validation
+Describe 'Test: Reset-ITAMServiceCredential Path Param Fail' {
+    It 'Attempt to run command Reset-ITAMServiceCredential with incorrect path' {
+        $errorThrown = $false
+        try {
+            Reset-ITAMServiceCredential -Path C:\Users\b.batman-stwk\Documents\ITAMTools\testing\nonrealfolder
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
+    }
+}
+
+#Failure test for path param validation
+Describe 'Test: Connect-ITAMServices Fail' {
+    It 'Attempt to run command Connect-ITAMServices with invalid path' {
+        $errorThrown = $false
+        try {
+            Connect-ITAMServices -Path C:\Users\b.batman-stwk\Documents\ITAMTools\testing\nonrealfolder
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
+    }
+}
