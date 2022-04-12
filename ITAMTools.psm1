@@ -43,23 +43,23 @@ function Connect-ITAMServices {
   $viServerUrl = "marn-vb-vmsa01.iwunet.indwes.edu" 
 
   $validConnect = $false
-  while(!$validConnect){
-    try{
+  while (!$validConnect) {
+    try {
       Connect-SnipeitPS -siteCred (Import-Clixml -Path ($path.FullName + "\ITAM.xml"))
       $validConnect = $true
     }
-    catch{
+    catch {
       $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", $itamUrl, "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
     }
   }
 
   $validConnect = $false
-  while(!$validConnect){
-    try{
+  while (!$validConnect) {
+    try {
       Connect-VIServer -Server $viServerUrl -Credential (Import-Clixml -Path ($path.FullName + "\VMWare.xml"))
       $validConnect = $true
     }
-    catch{
+    catch {
       Get-Credential -Message "Please provide your login for VMWare" | Export-Clixml -Path ($path.FullName + "\VMWare.xml")
     }
   }
@@ -69,30 +69,30 @@ function Connect-ITAMServices {
   #https://stackoverflow.com/questions/61662906/powershell-automated-connection-to-power-bi-service-without-hardcoding-passwor
   #Connect-PowerBIServiceAccount
   $validConnect = $false
-  while(!$validConnect){
-    try{
+  while (!$validConnect) {
+    try {
       Get-PowerBIAccessToken
       $validConnect = $true
     }
-    catch{
+    catch {
       Connect-PowerBIServiceAccount
     }
   }
 
 }
 
-function Reset-ITAMServiceCredential{
+function Reset-ITAMServiceCredential {
   param(
     [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [credTypes]$type,
     [Parameter()][ValidateScript({
-      if (-not ($_ | Test-Path)) {
-        throw "File/folder does not exist"
-      }
-      if (-not ($_ | Test-Path -PathType Container)) {
-        throw "The path argument must be a folder."
-      }
-      return $true
-    })] [System.IO.FileInfo]$path = (Get-Location)
+        if (-not ($_ | Test-Path)) {
+          throw "File/folder does not exist"
+        }
+        if (-not ($_ | Test-Path -PathType Container)) {
+          throw "The path argument must be a folder."
+        }
+        return $true
+      })] [System.IO.FileInfo]$path = (Get-Location)
   )
 
   if ($type -eq [credTypes]::ITAM) {
@@ -153,9 +153,9 @@ function Add-ITAMVM {
 
   #Gets a vm's parents and if it exists, assign the asset to the computer
   $parentComputer = Get-SnipeitAsset -asset_tag $asset.name
-    if($parentComputer -and !$asset.assigned_to){
-      Set-SnipeitAssetOwner -id $asset.id -assigned_id $parentComputer.id -checkout_to_type asset
-    }
+  if ($parentComputer -and !$asset.assigned_to) {
+    Set-SnipeitAssetOwner -id $asset.id -assigned_id $parentComputer.id -checkout_to_type asset
+  }
 }
 
 function Add-ITAMComputer {
@@ -221,47 +221,47 @@ function Update-ITAMVM {
     [Parameter()] $assetTag
   )
 
-    $asset = Get-SnipeitAsset -asset_tag $assetTag
+  $asset = Get-SnipeitAsset -asset_tag $assetTag
 
-    #if($vm.Name -ne $asset.name){
-    #Set-SnipeitAsset -id $assetID -name $vm.Name
-    #}
+  #if($vm.Name -ne $asset.name){
+  #Set-SnipeitAsset -id $assetID -name $vm.Name
+  #}
 
-    $onStatusID = (Get-SnipeitStatus -Search "Powered On").id
-    $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
-    $vmModelID = (Get-SnipeitModel -Search "Virtual Machine").id
+  $onStatusID = (Get-SnipeitStatus -Search "Powered On").id
+  $offStatusID = (Get-SnipeitStatus -Search "Powered Off").id
+  $vmModelID = (Get-SnipeitModel -Search "Virtual Machine").id
 
-    $vmGuest = Get-VMGuest -VM $vm
-    $ipString = ""
-    foreach ($ip in $vmGuest.IPAddress) {
-      $ipString += $ip + ", "
-    }
+  $vmGuest = Get-VMGuest -VM $vm
+  $ipString = ""
+  foreach ($ip in $vmGuest.IPAddress) {
+    $ipString += $ip + ", "
+  }
 
-    $ipString = $ipString.TrimEnd(", ")
+  $ipString = $ipString.TrimEnd(", ")
 
 
-    $customFields = @{
-      "_snipeit_number_of_cpus_2" = $vm.NumCpu
-      "_snipeit_memory_gb_3"      = $vm.MemoryGB
-      "_snipeit_ip_addresses_4"   = $ipString
-      "_snipeit_os_5"             = $vmGuest.OSFullName
-    }
+  $customFields = @{
+    "_snipeit_number_of_cpus_2" = $vm.NumCpu
+    "_snipeit_memory_gb_3"      = $vm.MemoryGB
+    "_snipeit_ip_addresses_4"   = $ipString
+    "_snipeit_os_5"             = $vmGuest.OSFullName
+  }
 
-    $powerStatusID
-    if ($vm.PowerState -eq "PoweredOn") {
-      $powerStatusID = $onStatusID
-    }
-    else {
-      $powerStatusID = $offStatusID
-    }
+  $powerStatusID
+  if ($vm.PowerState -eq "PoweredOn") {
+    $powerStatusID = $onStatusID
+  }
+  else {
+    $powerStatusID = $offStatusID
+  }
 
-    Set-SnipeitAsset -id $asset.id -status_id $powerStatusID -customfields $customFields
+  Set-SnipeitAsset -id $asset.id -status_id $powerStatusID -customfields $customFields
 
-    #Gets te vm's parents and if it exists, assign the asset to the computer
-    $parentComputer = Get-SnipeitAsset -asset_tag $asset.name
-    if($parentComputer -and !$asset.assigned_to){
-      Set-SnipeitAssetOwner -id $asset.id -assigned_id $parentComputer.id -checkout_to_type asset
-    }
+  #Gets te vm's parents and if it exists, assign the asset to the computer
+  $parentComputer = Get-SnipeitAsset -asset_tag $asset.name
+  if ($parentComputer -and !$asset.assigned_to) {
+    Set-SnipeitAssetOwner -id $asset.id -assigned_id $parentComputer.id -checkout_to_type asset
+  }
   
 
   #Archives any vms on Snipe that no longer exist in VMWare
@@ -467,8 +467,8 @@ function Out-ITAMAssetsbyModel {
     }
   }
   
-  if(!$testPrint){ 
-      $printData | Out-PieChart -PieChartTitle "Assets by Model" -DisplayToScreen
+  if (!$testPrint) { 
+    $printData | Out-PieChart -PieChartTitle "Assets by Model" -DisplayToScreen
   }
 
 }
