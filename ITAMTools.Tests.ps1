@@ -3,7 +3,7 @@ Import-Module Pester
 
 Describe 'Test: Remove-SnipeVM' {
     It 'Check that removing a VM is reflected on ITAM' {
-        $VM= Get-VM -Name Snipe-IT_Demo
+        $VM = Get-VM -Name Snipe-IT_Demo
         Remove-SnipeitAsset -id (Get-SnipeitAsset -asset_tag $VM.Id).id
         
         Get-SnipeitAsset -asset_tag $VM.Id | Should -Be $null
@@ -12,7 +12,7 @@ Describe 'Test: Remove-SnipeVM' {
 
 Describe 'Test: Add-ITAMVM' {
     It 'Check that adding a VM shows up on ITAM' {
-        $VM= Get-VM -Name Snipe-IT_Demo
+        $VM = Get-VM -Name Snipe-IT_Demo
         Add-ITAMVM -VM $VM
 
         (Get-SnipeitAsset -asset_tag $VM.Id).asset_tag | Should -Be $VM.Id
@@ -267,7 +267,7 @@ Describe 'Test: Archive-SnipeVm Archive Happy Path' {
             Archive-ITAMAsset -assetTag $vm.asset_tag
             $vmUpdated = Get-SnipeitAsset -asset_tag DEV-INV01
 
-            if($vmUpdated.status_label.name -eq "Archived"){
+            if ($vmUpdated.status_label.name -eq "Archived") {
                 $isArchived = $true
             }
 
@@ -290,7 +290,7 @@ Describe 'Test: Update-ITAMVM Archive Error Path' {
             Archive-ITAMAsset -assetTag $vm.asset_tag
             $vmUpdated = Get-SnipeitAsset -asset_tag '1243345234'
 
-            if($vmUpdated.status_label.name -eq "Archived"){
+            if ($vmUpdated.status_label.name -eq "Archived") {
                 $isArchived = $true
             }
 
@@ -313,7 +313,7 @@ Describe 'Test: Archive-SnipeComputer Archive Happy Path' {
             Archive-ITAMAsset -assetTag $Computer.asset_tag
             $ComputerUpdated = Get-SnipeitAsset -asset_tag DEV-INV01
 
-            if($ComputerUpdated.status_label.name -eq "Archived"){
+            if ($ComputerUpdated.status_label.name -eq "Archived") {
                 $isArchived = $true
             }
 
@@ -352,7 +352,7 @@ Describe 'Test: Update-ITAMComputer Archive Error Path' {
             Archive-ITAMAsset -assetTag $Computer.asset_tag
             $ComputerUpdated = Get-SnipeitAsset -asset_tag 'NONREALASSET'
 
-            if($ComputerUpdated.status_label.name -eq "Archived"){
+            if ($ComputerUpdated.status_label.name -eq "Archived") {
                 $isArchived = $true
             }
 
@@ -452,7 +452,7 @@ Describe 'Test: Out-ITAMPowerBIReport Happy Path' {
 
         try {
             $DataSet = Get-PowerBIDataset -name $name 
-            if($DataSet){
+            if ($DataSet) {
                 $DataSetExists = $true
             }
         }
@@ -523,10 +523,10 @@ Describe 'Test: Update-ITAMVM VM Assignment Happy Path' {
 
         $updatedVM = Get-SnipeitAsset -asset_tag $VM.id
 
-        if($Computer){
+        if ($Computer) {
             $correctAssignment = ($updatedVM.assigned_to.id -eq $Computer.id)
         }
-        else{
+        else {
             $correctAssignment = $true
         }
               
@@ -543,11 +543,11 @@ Describe 'Test: Update-ITAMVM VM Assignment Happy Path 2' {
 
         $VM = Get-VM -Name 'PRD-WEB04'
 
-        try{
+        try {
             Update-ITAMVM -VM $VM -assetTag $VM.id
         }
-        catch{
-           $exceptionThrown = $true;
+        catch {
+            $exceptionThrown = $true;
         }
               
         $exceptionThrown | Should -Be $false
@@ -567,10 +567,10 @@ Describe 'Test: Add-ITAMVM VM Assignment Fail Path' {
         $updatedVM = Get-SnipeitAsset -asset_tag $VM.id
 
         #If the computer does not exists and the vm is assigned, assignment is incorrect
-        if(!$updatedVM.assigned_to){
+        if (!$updatedVM.assigned_to) {
             $correctAssignment = $false
         }
-        else{
+        else {
             $correctAssignment = $true
         }
               
@@ -591,5 +591,84 @@ Describe 'Test: Add-ITAMVM VM Assignment Fail Path 2' {
         $updatedVM = Get-SnipeitAsset -asset_tag $VM.id
 
         (!$updatedVM.assigned_to -and !$Computer) | Should -Be $true
+    }
+}
+
+#New Test for this sprint
+Describe 'Test: Connect-ITAMServices Happy Path: Exception not thrown' {
+    It 'Connect-ITAMServices, verifying that exception is not thrown' {
+        $exceptionThrown = $false
+
+        try {
+            Connect-ITAMServices
+        }
+        catch {
+            $exceptionThrown = $true
+        }
+
+        $exceptionThrown | Should -Be $false
+    }
+}
+
+Describe 'Test: Connect-ITAMServices Happy Path: Connections Exist' {
+    It 'Connect-ITAMServices, verifying that Connections Exist' {
+        Connect-ITAMServices
+
+        #Each of these functions will return true if the connections exists
+        ((get-vm) -and (Get-SnipeitModel) -and (Get-PowerBIAccessToken)) | Should -Be $true
+    }
+}
+
+Describe 'Test: Connect-ITAMServices Happy Path: path works correctly' {
+    It 'Connect-ITAMServices, verifying that Connections Exist at path location' {
+        Connect-ITAMServices -Path C:\Users\b.batman-stwk\Documents\ITAMTools\testing
+
+        #Each of these functions will return true if the connections exists
+        ((get-vm) -and (Get-SnipeitModel) -and (Get-PowerBIAccessToken)) | Should -Be $true
+    }
+}
+
+#Failure test for Type param validation
+Describe 'Test: Reset-ITAMServiceCredential Type Param Fail' {
+    It 'Attempt to run command Reset-ITAMServiceCredential with incorrect type' {
+        $errorThrown = $false
+        try {
+            Reset-ITAMServiceCredential -Type null
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
+    }
+}
+
+#Failure test for Type param validation
+Describe 'Test: Reset-ITAMServiceCredential Path Param Fail' {
+    It 'Attempt to run command Reset-ITAMServiceCredential with incorrect path' {
+        $errorThrown = $false
+        try {
+            Reset-ITAMServiceCredential -Path C:\Users\b.batman-stwk\Documents\ITAMTools\testing\nonrealfolder
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
+    }
+}
+
+#Failure test for path param validation
+Describe 'Test: Connect-ITAMServices Fail' {
+    It 'Attempt to run command Connect-ITAMServices with invalid path' {
+        $errorThrown = $false
+        try {
+            Connect-ITAMServices -Path C:\Users\b.batman-stwk\Documents\ITAMTools\testing\nonrealfolder
+        }
+        catch {
+            $errorThrown = $true
+        }
+               
+        $errorThrown | Should -Be $true
     }
 }
