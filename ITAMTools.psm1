@@ -28,6 +28,7 @@ enum credTypes{
 
 function Connect-ITAMServices {
   param(
+    #validate parameter is path that exists
     [Parameter()][ValidateScript({
         if (-not ($_ | Test-Path)) {
           throw "File/folder does not exist"
@@ -42,6 +43,7 @@ function Connect-ITAMServices {
   $itamUrl = "http://itassets.iwunet.indwes.edu"
   $viServerUrl = "marn-vb-vmsa01.iwunet.indwes.edu" 
 
+  #while Snipe connection is not valid, enter new API Key
   $validConnect = $false
   while (!$validConnect) {
     try {
@@ -49,10 +51,11 @@ function Connect-ITAMServices {
       $validConnect = $true
     }
     catch {
-      $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", $itamUrl, "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
+      $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", "$itamUrl", "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
     }
   }
 
+  #While VMWare connection is not valid, replace vmware credential
   $validConnect = $false
   while (!$validConnect) {
     try {
@@ -65,7 +68,7 @@ function Connect-ITAMServices {
   }
 
 
-  #Without an admin account to create API key, automated PowerBI login is not possible:
+  #Without an PowerBI admin account to create API key, automated PowerBI login is not possible:
   #https://stackoverflow.com/questions/61662906/powershell-automated-connection-to-power-bi-service-without-hardcoding-passwor
   #Connect-PowerBIServiceAccount
   $validConnect = $false
@@ -83,6 +86,7 @@ function Connect-ITAMServices {
 
 function Reset-ITAMServiceCredential {
   param(
+    #validate parameter is path that exists
     [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()] [credTypes]$type,
     [Parameter()][ValidateScript({
         if (-not ($_ | Test-Path)) {
@@ -95,8 +99,9 @@ function Reset-ITAMServiceCredential {
       })] [System.IO.FileInfo]$path = (Get-Location)
   )
 
+  #Reset credential
   if ($type -eq [credTypes]::ITAM) {
-    $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", $itamUrl, "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
+    $host.ui.PromptForCredential("Store API key for ITAM", "Please enter a new API Key as password.", "http://itassets.iwunet.indwes.edu", "ITAM") | Export-Clixml -Path ($path.FullName + "\ITAM.xml")
   }
   elseif ($type -eq ([credTypes]::VMWare)) {
     Get-Credential -Message "Please provide your login for vm Ware" | Export-Clixml -Path ($path.FullName + "\VMWare.xml")

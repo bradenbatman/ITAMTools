@@ -594,7 +594,7 @@ Describe 'Test: Add-ITAMVM VM Assignment Fail Path 2' {
     }
 }
 
-
+#New Test for this sprint
 Describe 'Test: Connect-ITAMServices Happy Path: Exception not thrown' {
     It 'Connect-ITAMServices, verifying that exception is not thrown' {
         $exceptionThrown = $false
