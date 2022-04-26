@@ -656,7 +656,7 @@ function Update-AllITAMComputers {
     }
   }
 
-  Archive-ITAMComputer
+  Archive-ITAMComputers
 
 }
 
