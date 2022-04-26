@@ -94,6 +94,7 @@ function Sync-ITAMfromiSupport {
   #Connect to Sql
   $sqlServer = 'prd-sql01'
   $db = 'RP-ISUPPORT'
+  
   $query = "SELECT 
 [CUSTOMERS].LOGIN, [CUSTOMERS].EMAIL,
 [ASSET].NAME, [ASSET_TYPES].TYPE, [ASSET].MFG, [ASSET].MODEL, [ASSET].SERIAL_NUMBER, [ASSET].TAG_NUMBER, [ASSET].LOCATION, [ASSET].DT_PURCHASE, [ASSET].DT_WAR_END, [ASSET].COMMENTS
@@ -540,7 +541,7 @@ function Update-ITAMComputer {
     $lastModifiedITAM = [datetime]$asset.custom_fields.Modified.Value
   }
 
-  $statusID = Get-SnipeitStatus -Id 2
+  $status = Get-SnipeitStatus -Id 2
 
   $lastModifiedAD = [datetime]$computer.Modified
 
@@ -562,7 +563,7 @@ function Update-ITAMComputer {
     }
 
     #Push the updates to Snipe
-    Set-SnipeitAsset -Id $asset.id -customfields $customFields -status_id $statusID
+    Set-SnipeitAsset -Id $asset.id -customfields $customFields -status_id $status.id
 
   }
 
