@@ -5,3 +5,4 @@ Connect-ITAM
 
 Update-AllSnipeVMs
 Update-AllSnipeComputers
+Sync-ITAMfromiSupport

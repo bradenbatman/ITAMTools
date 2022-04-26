@@ -65,6 +65,7 @@ function Connect-ITAMServices {
     catch {
       Get-Credential -Message "Please provide your login for VMWare" | Export-Clixml -Path ($path.FullName + "\VMWare.xml")
     }
+
   }
 
 
@@ -82,7 +83,220 @@ function Connect-ITAMServices {
     }
   }
 
+  #$gscn = New-Object System.Data.SqlClient.SqlConnection
+
+
+  
+
 }
+
+function Sync-ITAMfromiSupport {
+  #Connect to Sql
+  $sqlServer = 'prd-sql01'
+  $db = 'RP-ISUPPORT'
+  
+  $query = "SELECT 
+[CUSTOMERS].LOGIN, [CUSTOMERS].EMAIL,
+[ASSET].NAME, [ASSET_TYPES].TYPE, [ASSET].MFG, [ASSET].MODEL, [ASSET].SERIAL_NUMBER, [ASSET].TAG_NUMBER, [ASSET].LOCATION, [ASSET].DT_PURCHASE, [ASSET].DT_WAR_END, [ASSET].COMMENTS
+FROM [RP-ISUPPORT].[dbo].[ASSET_OWNERS], [RP-ISUPPORT].[dbo].[CUSTOMERS], [RP-ISUPPORT].[dbo].[ASSET], [RP-ISUPPORT].[dbo].[ASSET_TYPES]
+WHERE [ASSET_OWNERS].ID_ASSET_OWNERS = [CUSTOMERS].ID and [ASSET_OWNERS].ID_ASSET = [ASSET].ID and [ASSET_TYPES].ID = [ASSET].ID_TYPE"
+
+  #Uses windows authentication with the current user.
+  $ownedAssets = Invoke-Sqlcmd -ServerInstance $sqlServer -Database $db -Query $query
+
+  $ownedWorkstations = $ownedAssets | Where-Object { $_.type -eq "Workstation" }  
+  $workstationCategoryID = (Get-SnipeitCategory -search "Workstation" | Where-Object { $_.name -eq "Workstation" }).id
+  $fieldsetID = ((Get-SnipeitFieldset) | Where-Object { $_.name -eq "Asset with AD and iSupport Sync" }).id
+
+  #Verify that all workstation manufacturers exist in ITAM
+  $workstationManufacturers = $ownedWorkstations | Select-Object -Property 'MFG' -Unique
+  foreach ($manu in $workstationManufacturers) {
+    if (!((Get-SnipeitManufacturer -all).name -eq $manu) ) {
+      New-SnipeitManufacturer -Name $manu
+    }
+  }
+
+  #Verify that all workstation models exist in ITAM
+  $workstationModels = $ownedWorkstations | Select-Object -Property 'MODEL', 'MFG' -Unique
+  foreach ($model in $workstationModels) {
+    if (!((Get-SnipeitModel -all).name -eq ($model.MODEL -replace '\"', '')) ) {
+      New-SnipeitModel -name ($model.MODEL -replace '\"', '') -model_number ($model.MODEL -replace '\"', '') -category_id $workstationCategoryID -manufacturer_id (Get-SnipeitManufacturer -search $model.mfg).id -fieldset_id $fieldsetID 
+    }
+  }
+
+  #Verify that all locations exist in ITAM
+  $workstationLocations = $ownedWorkstations | Select-Object -Property 'LOCATION' -Unique
+  foreach ($location in $workstationLocations) {
+    if (!((Get-SnipeitLocation -all).name -eq $location.location) ) {
+      New-SnipeitLocation -name $location.location
+    }
+  }
+
+  $defaultStatus = Get-SnipeitStatus -search 'Ready to Deploy'
+  $waitTime = 1000
+  $num = 0
+
+  #Update/add each workstation
+  foreach ($ownedWorkstation in $ownedWorkstations) {
+    $model = (Get-SnipeitModel -search ($ownedWorkstation.MODEL -replace '\"', '')) | Where-Object { $_.name -eq ($ownedWorkstation.MODEL -replace '\"', '') }
+    #Handle Too many Requests
+    while (!$model -or $model.GetType().name -eq 'HttpWebRequest') {
+      Start-Sleep -Milliseconds $waitTime
+      $model = (Get-SnipeitModel -search ($ownedWorkstation.MODEL -replace '\"', '')) | Where-Object { $_.name -eq ($ownedWorkstation.MODEL -replace '\"', '') }
+    }
+      
+    $asset = Get-SnipeitAsset -asset_tag $ownedWorkstation.NAME
+
+    #Handle Too many Requests
+    while ($asset.GetType().name -eq 'HttpWebRequest') {
+      Start-Sleep -Milliseconds $waitTime
+      $asset = Get-SnipeitAsset -asset_tag $ownedWorkstation.NAME
+      $asset
+    }
+
+
+    #Add the asset if it doesn't already exist
+    if (!$asset) {
+      $tempAsset = New-SnipeitAsset -asset_tag $ownedWorkstation.NAME -model_id $model.id -status_id $defaultStatus.id -name $ownedWorkstation.NAME
+      while ($tempAsset.GetType().name -eq 'HttpWebRequest') {
+        Start-Sleep -Milliseconds $waitTime
+        $tempAsset = New-SnipeitAsset -asset_tag $ownedWorkstation.NAME -model_id $model.id -status_id $defaultStatus.id -name $ownedWorkstation.NAME
+        $tempAsset
+      }
+      
+    }
+
+    $asset = Get-SnipeitAsset -asset_tag $ownedWorkstation.NAME
+
+    #Handle Too many Requests
+    while (!$asset -or $asset.GetType().name -eq 'HttpWebRequest') {
+      Start-Sleep -Milliseconds $waitTime
+      $asset = Get-SnipeitAsset -asset_tag $ownedWorkstation.NAME
+      $asset
+    }
+
+    $setSnipeitAssetString = 'Set-SnipeitAsset -id (' + $asset.id + ')'
+    $set = $false
+
+    #Update Model
+    if ($model.id -ne $asset.model.id) {
+
+      $trySet = Set-SnipeitAsset -id $asset.id -model_id $model.id
+
+      #Handle Too many Requests
+      while (!$trySet -or $trySet.GetType().name -eq 'HttpWebRequest') {
+        Start-Sleep -Milliseconds $waitTime
+        $trySet = Set-SnipeitAsset -id $asset.id -model_id $model.id
+      }
+
+
+      $asset = Get-SnipeitAsset -asset_tag $ownedWorkstation.NAME
+
+      #Handle Too many Requests
+      while (!$asset -or $asset.GetType().name -eq 'HttpWebRequest') {
+        Start-Sleep -Milliseconds $waitTime
+        $asset = Get-SnipeitAsset -asset_tag $ownedWorkstation.NAME
+      }
+
+    }
+
+
+    $purchaseDateSet = ""
+
+    #Update Purchase Date and warranty if purchase date doesn't exist
+    if ($null -ne $ownedWorkstation.DT_PURCHASE -and ($purchaseDate = [datetime]$ownedWorkstation.DT_PURCHASE) -and (!$asset.purchase_date -or ($asset.purchase_date.date -ne $purchaseDate.ToString("yyyy-MM-dd"))) ) {
+      $purchaseDateSet = $purchaseDate.ToString("yyyy-MM-dd")
+
+      $setSnipeitAssetString = $setSnipeitAssetString + ' -purchase_date ($purchaseDateSet)'
+      $set = $true
+
+
+      if ($null -ne $ownedWorkstation.DT_WAR_END -and ($warrantyDate = [datetime]$ownedWorkstation.DT_WAR_END)) {
+
+        $warrantyMonths = ($warrantyDate.Year - $purchaseDate.Year) * 12 + ($warrantyDate.Month - $purchaseDate.Month)
+        $setSnipeitAssetString = $setSnipeitAssetString + ' -warranty_months (' + $warrantyMonths + ')'
+        $set = $true
+
+      }
+    }
+
+    $customFields = @()
+
+    if ($null -ne $ownedWorkstation.SERIAL_NUMBER -and !$asset.custom_fields.'Serial Number'.value) {
+
+      $customFields = @{
+        $asset.custom_fields.'Serial Number'.field = $ownedWorkstation.SERIAL_NUMBER
+      }
+      $setSnipeitAssetString = $setSnipeitAssetString + ' -customfields ($customFields)'
+      $set = $true
+
+    }
+
+    $owner = Get-SnipeitUser -username ($ownedWorkstation.LOGIN -Split '\\')[1]
+    #Handle Too many Requests
+    if ($owner) {
+      while ($owner.GetType().name -eq 'HttpWebRequest') {
+        Start-Sleep -Milliseconds $waitTime
+        $owner = Get-SnipeitUser -username ($ownedWorkstation.LOGIN -Split '\\')[1]
+      }
+    }
+
+    #Update Asset with Owner
+    if ($owner) {
+      #Update the owner of the asset with the location
+      
+      ##################################################################DOES NOT HAVE TOO MANY REQUEST CHECKING
+      if (($owner.location) -and ($owner.location.name -ne $ownedWorkstation.LOCATION) -and ($location = Get-SnipeitLocation -search $ownedWorkstation.LOCATION)) {
+
+        $trySet = Set-SnipeitUser -id $owner.id -location_id $location.id
+        #Handle Too many Requests
+        while (!$trySet -or $trySet.GetType().name -eq 'HttpWebRequest') {
+          Start-Sleep -Milliseconds $waitTime
+          $trySet = Set-SnipeitUser -id $owner.id -location_id $location.id
+          $trySet
+        }
+      }
+
+      #assign asset to owner if the asset can be deployed and isn't already deployed to someone
+      if ($asset.status_label.status_type -eq 'deployable' -and $asset.status_label.status_meta -ne 'deployed' ) {
+        $trySet = Set-SnipeitAssetOwner -id $asset.id -assigned_id $owner.id
+        #Handle Too many Requests
+        while (!$trySet -or $trySet.GetType().name -eq 'HttpWebRequest') {
+          Start-Sleep -Milliseconds $waitTime
+          $trySet = Set-SnipeitAssetOwner -id $asset.id -assigned_id $owner.id
+          $trySet
+        }
+      }
+    }
+
+    if ($set) {
+      if ($asset.id) {
+        $trySet = Invoke-Expression -Command $setSnipeitAssetString
+      }
+      else {
+        "Asset does not exist for: " + $ownedWorkstation.NAME
+      }
+      #Handle Too many Requests
+      while (!$trySet -or $trySet.GetType().name -eq 'HttpWebRequest') {
+        Start-Sleep -Milliseconds $waitTime
+        if ($asset.id) {
+          $trySet = Invoke-Expression -Command $setSnipeitAssetString
+        }
+        else {
+          "Asset does not exist for: " + $ownedWorkstation.NAME
+        }
+        $trySet
+      }
+    }
+    $num++
+    ($num.toString() + ' out of ' + $ownedWorkstations.Count)
+    $ownedWorkstation.NAME
+  }
+
+
+}
+
+
 
 function Reset-ITAMServiceCredential {
   param(
@@ -112,7 +326,6 @@ function Reset-ITAMServiceCredential {
 
   Connect-ITAMServices
 }
-
 
 
 function Add-ITAMVM {
@@ -194,10 +407,13 @@ function Add-ITAMComputer {
 }
 
 function Add-AllITAMComputers {
-  $computers = Get-ADComputer -Filter '*' | Where-Object { ($_.DistinguishedName -notlike "*OU=Archived,*") -and ($_.DistinguishedName -notlike "*OU=Unmanaged,*") }
+  $computers = Get-ADComputer -Filter '*' -Properties CN | Where-Object { ($_.DistinguishedName -notlike "*OU=Archived,*") -and ($_.DistinguishedName -notlike "*OU=Unmanaged,*") }
 
   foreach ($computer in $computers) {
-    Add-ITAMComputer -Computer $computer
+    if (!(Get-SnipeitAsset -asset_tag $computer.CN )) {
+      Add-ITAMComputer -Computer $computer
+      $computer.CN
+    }
   }
 }
 
@@ -269,8 +485,7 @@ function Update-ITAMVM {
   }
   
 
-  #Archives any vms on Snipe that no longer exist in VMWare
-  Archive-ITAMVMs
+
 }
 
 function Archive-ITAMAsset {
@@ -316,44 +531,41 @@ function Update-ITAMComputer {
     [Parameter()] $assetTag
   )
 
-  try {
-    #Gets the computer asset in Snipe
-    $asset = Get-SnipeitAsset -asset_tag $assetTag
-    #Gets the corrosponding computer data from Active Directory
-    $computer = Get-ADComputer -Filter 'CN -like $assetTag' -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
+  #Gets the computer asset in Snipe
+  $asset = Get-SnipeitAsset -asset_tag $assetTag
+  #Gets the corrosponding computer data from Active Directory
+  $computer = Get-ADComputer -Filter 'CN -like $assetTag' -Properties CN, Created, IPv4Address, IPv6Address, LastLogonDate, Modified, OperatingSystem, OperatingSystemVersion
+  $lastModifiedITAM = $null
+
+  if ($asset.custom_fields.Modified.Value) {
     $lastModifiedITAM = [datetime]$asset.custom_fields.Modified.Value
+  }
 
-    $statusID = Get-SnipeitStatus -Id 2
+  $status = Get-SnipeitStatus -Id 2
 
-    $lastModifiedAD = [datetime]$computer.Modified
+  $lastModifiedAD = [datetime]$computer.Modified
 
-    #If the asset has been modified since the last update, update all of the data fields
-    if ($lastModifiedITAM -lt $lastModifiedAD) {
-      $customFields = @{
-        "_snipeit_os_5"               = $computer.OperatingSystem
-        "_snipeit_os_version_9"       = $computer.OperatingSystemVersion
-        "_snipeit_modified_10"        = $computer.Modified.ToString()
-        "_snipeit_created_11"         = $computer.Created.ToString()
-        "_snipeit_last_logon_date_12" = $computer.LastLogonDate.ToString()
-      }
-
-      if ($computer.IPv4Address) {
-        $customFields += @{ "_snipeit_ipv4_address_6" = $computer.IPv4Address }
-      }
-      if ($computer.IPv6Address) {
-        $customFields += @{ "_snipeit_ipv6_address_7" = $computer.IPv6Address }
-      }
-
-      #Push the updates to Snipe
-      Set-SnipeitAsset -Id $asset.id -customfields $customFields -status_id $statusID
-
+  #If the asset has been modified since the last update, update all of the data fields
+  if (!$lastModifiedITAM -or ($lastModifiedITAM -lt $lastModifiedAD)) {
+    $customFields = @{
+      "_snipeit_os_5"               = $computer.OperatingSystem
+      "_snipeit_os_version_9"       = $computer.OperatingSystemVersion
+      "_snipeit_modified_10"        = $computer.Modified.ToString()
+      "_snipeit_created_11"         = $computer.Created.ToString()
+      "_snipeit_last_logon_date_12" = $computer.LastLogonDate.ToString()
     }
 
-  }
-  catch {
-    throw "asset does not exist"
-  }
+    if ($computer.IPv4Address) {
+      $customFields += @{ "_snipeit_ipv4_address_6" = $computer.IPv4Address }
+    }
+    if ($computer.IPv6Address) {
+      $customFields += @{ "_snipeit_ipv6_address_7" = $computer.IPv6Address }
+    }
 
+    #Push the updates to Snipe
+    Set-SnipeitAsset -Id $asset.id -customfields $customFields -status_id $status.id
+
+  }
 
 }
 
@@ -372,6 +584,9 @@ function Update-AllITAMVMs {
     }
 
   }
+
+  #Archives any vms on Snipe that no longer exist in VMWare
+  Archive-ITAMVMs
 }
 
 function Get-ITAMAsset {
@@ -433,15 +648,15 @@ function Update-AllITAMComputers {
 
   foreach ($computer in $computers) {
     if (Get-SnipeitAsset -asset_tag $computer.CN) {
-      try {
-        Update-ITAMComputer -assetTag $computer.CN
-      }
-      catch {}
+
+      Update-ITAMComputer -assetTag $computer.CN
     }
     else {
       Add-ITAMComputer -Computer $computer
     }
   }
+
+  Archive-ITAMComputer
 
 }
 
@@ -741,3 +956,5 @@ Export-ModuleMember -Function 'Out-AllITAMReports'
 Export-ModuleMember -Function 'Out-ITAMReport'
 Export-ModuleMember -Function 'Get-ITAMData'
 Export-ModuleMember -Function 'Get-ITAMAsset'
+Export-ModuleMember -Function 'Sync-ITAMfromiSupport'
+
